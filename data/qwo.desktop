@@ -1,0 +1,11 @@
+[Desktop Entry]
+Encoding=UTF-8
+Name=qwo
+Comment=Quikwriting for OpenMoko
+Version=0.1
+Type=Application
+Exec=qwo
+Terminal=false
+Categories=Utilities;Applications;TextTools
+X-MB-SingleInstance=true
+Icon=qwo
