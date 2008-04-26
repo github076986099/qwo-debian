@@ -39,6 +39,7 @@
 #define DELTA                   (WIDTH >> 4)
 #define BORDER_WIDTH            3
 
+#define GRID_COLOR				"orange"
 //#define DEFAULT_FONT    "-*-courier-bold-*-*-24-*-*-*-*-*-*-*"
 #define DEFAULT_FONT    "fixed"
 
@@ -59,7 +60,8 @@
 	 ((b - a) < 0) ? (((a - 1) << 2) + ((b - a) & (8 - 1))) : \
 	 (1 << 5) + (b - a) - (1 << 3))
 
-char charsets[][MAX_CHAR] = { "ask<t>xfnrpu>yjlidb,e.zgowvc<hqm",
+char charsets[][MAX_CHAR] = {
+	"ask<t>xfnrpu>yjlidb,e.zgowvc<hqm",
 	"ASK<T>XFNRPU>YJLIDB,E.ZGOWVC<HQM",
 	"1-??2?$+3'):6\n@?9;&,8.??7_=?4/(\""};
 
@@ -167,10 +169,15 @@ void display_charset(Display *dpy, Window win, GC gc, XFontStruct *font_info,
 }
 
 void draw_grid(Display *dpy, Window toplevel, GC gc){
+	XColor grid_color, exact;
+	Colormap cmap;
 
 	unsigned long blackColor = BlackPixel(dpy, DefaultScreen(dpy));
+	cmap = DefaultColormap(dpy, DefaultScreen(dpy));
 
-	XSetForeground(dpy, gc, blackColor);
+	XAllocNamedColor(dpy, cmap, GRID_COLOR, &grid_color, &exact);
+
+	XSetForeground(dpy, gc, grid_color.pixel);
 
 	XDrawLine(dpy, toplevel, gc, point1.x, point1.y, point9.x, point9.y);
 	XDrawLine(dpy, toplevel, gc, point2.x, point2.y, point10.x, point10.y);
@@ -183,6 +190,8 @@ void draw_grid(Display *dpy, Window toplevel, GC gc){
 
 	XDrawLine(dpy, toplevel, gc, point7.x, point7.y, point15.x, point15.y);
 	XDrawLine(dpy, toplevel, gc, point8.x, point8.y, point16.x, point16.y);
+	XSetForeground(dpy, gc, blackColor);
+
 }
 
 int main(int argc, char **argv){
