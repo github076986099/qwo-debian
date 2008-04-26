@@ -61,8 +61,8 @@
 	 (1 << 5) + (b - a) - (1 << 3))
 
 char charsets[][MAX_CHAR] = {
-	"ask<t>xfnrpu>yjlidb,e.zgowvc<hqm",
-	"ASK<T>XFNRPU>YJLIDB,E.ZGOWVC<HQM",
+	"ab>ced<fighj>klmonpqrs.tuvw,<xyz",
+	"AB>CED<FIGHJ>KLMONPQRS.TUVW,<XYZ",
 	"1-??2?$+3'):6\n@?9;&,8.??7_=?4/(\""};
 
 const XPoint point1 = { WIDTH / 3, 0 };
