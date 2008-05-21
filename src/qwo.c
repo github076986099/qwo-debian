@@ -40,7 +40,7 @@
 #define BORDER_WIDTH            3
 
 #define GRID_COLOR				"orange"
-//#define DEFAULT_FONT    "-*-courier-bold-*-*-24-*-*-*-*-*-*-*"
+//#define DEFAULT_FONT    "-*-courier-bold-*-*-12-*-*-*-*-*-*-*"
 #define DEFAULT_FONT    "fixed"
 
 #define MAX_CHARSET      3
@@ -153,19 +153,30 @@ void display_charset(Display *dpy, Window win, GC gc, XFontStruct *font_info,
 	font_height = font_info->ascent + font_info->descent;
 	//lbearing from Xcharstruct seems more appropriate
 	len = XTextWidth(font_info, charset, 1);
-	offset = WIDTH / 9;
-	for (i = 0; i < 8 ; i++){
+	offset = WIDTH / 8;
+	item.chars = (char *) charset;
+	XDrawText(dpy, win, gc, len, font_height, &item, 1);
+	item.chars = (char *) charset + 24;
+	XDrawText(dpy, win, gc, len, HEIGHT - font_info->descent,
+			&item, 1);
+	for (i = 1; i < 8 ; i++){
 		item.chars = (char *) charset + i;
-		XDrawText(dpy, win, gc, offset * (i + 1) - len, font_height,
-				&item, 1);
+		XDrawText(dpy, win, gc, offset * i, font_height, &item, 1);
 		item.chars = (char *) charset + i + 8;
-		XDrawText(dpy, win, gc, WIDTH - len, offset * (i + 1), &item, 1);
-		item.chars = (char *) charset + (23 - i);
-		XDrawText(dpy, win, gc, offset * (i + 2) - len,
+		XDrawText(dpy, win, gc, WIDTH - len, offset * i + font_info->ascent,
+				&item, 1);
+		item.chars = (char *) charset + (24 - i);
+		XDrawText(dpy, win, gc, offset * i,
 				HEIGHT - font_info->descent, &item, 1);
-		item.chars = (char *) charset + 31 - i;
-		XDrawText(dpy, win, gc, 0, offset * (i + 2), &item, 1);
+		item.chars = (char *) charset + 32 - i;
+		XDrawText(dpy, win, gc, font_info->max_bounds.lbearing,
+				offset * i + font_info->ascent, &item, 1);
 	}
+	item.chars = (char *) charset + 8;
+	XDrawText(dpy, win, gc, offset * 8 - len, font_height, &item, 1);
+	item.chars = (char *) charset + 16;
+	XDrawText(dpy, win, gc, offset * 8 - len, HEIGHT - font_info->descent,
+			&item, 1);
 }
 
 void draw_grid(Display *dpy, Window toplevel, GC gc){
