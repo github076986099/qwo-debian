@@ -15,10 +15,13 @@ which will add support window containing the inputed text.
 You can specify another font to use with the -f switch, for example:
 #qwo -f "-*-courier-bold-*-*-24-*-*-*-*-*-*-*"
 
-There is two < and > characters on the character sets, the upper ones are
-modifiers and will change the character set for the next input respectively to
-the previous and the next one. The left and right ones of the center area are,
-respectively, the delete and space.
+The currently character sets are the lowercase letters, uppercase and numbers.
+To switch the current set click in the window.
+
+The characters < and > appears twice, the upper ones are modifiers and will
+change the character set for the next inputed character respectively to the
+previous and the next set and go back to the current one. The left and right
+ones of the center area are, respectively, the delete and space.
 
 To exit the program enter eight regions excluding the one in the center. You can
 start with the upper left one, go to the upper middle one ... Without going back
