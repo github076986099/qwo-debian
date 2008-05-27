@@ -63,7 +63,7 @@
 char charsets[][MAX_CHAR] = {
 	"ab>ced<fighj>klmonpqrs.tuvw,<xyz",
 	"AB>CED<FIGHJ>KLMONPQRS.TUVW,<XYZ",
-	"1-??2?$+3')4>5@\n6;&,7.:/8_=9<0(\""};
+	"1-!?2?$+3')4>5@\n6;&,7.:/8_=9<0(\""};
 
 const XPoint point1 = { WIDTH / 3, 0 };
 const XPoint point2 = { 2*(WIDTH / 3), 0 };
