@@ -1,3 +1,9 @@
+2008-05-28	Charles Clément <caratorn@gmail.com>
+	* 0.1 release
+	* Compromise for the numbers to fit in reasonable place
+	* Change charset to alphabet layout thanks to Julien Blanchard
+	* Turn the grid to orange
+
 2008-04-22	Charles Clément <caratorn@gmail.com>
 
 	* Initial import
