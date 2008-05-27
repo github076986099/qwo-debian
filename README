@@ -3,22 +3,23 @@ Quikwriting for OpenMoko
 Author : Charles Clement <caratorn@gmail.com>
 
 This project is an implementation of Quikwriting, an efficient way to input
-text for handheld devices without picking your finger off the screen.
+text for hand-held devices without picking your finger off the screen.
 For information about QuikWriting, take a look at
 http://mrl.nyu.edu/~perlin/demos/quikwriting.html
 
 To test the software on a desktop you might want to configure it with the
 destination window, by issuing:
-./configure --enable-standalone
-which will create a window containing the inputed text.
+#./configure --enable-standalone
+which will add support window containing the inputed text.
 
-You can specify another font to use with the switch -f, for example:
-qwo -f "-*-courier-bold-*-*-24-*-*-*-*-*-*-*"
+You can specify another font to use with the -f switch, for example:
+#qwo -f "-*-courier-bold-*-*-24-*-*-*-*-*-*-*"
 
-There is two < and > characters on the first character set, the upper ones are
-modifiers and will change the character set for the next input. The left and
-right ones of the center area are, respectively, the delete and space.
+There is two < and > characters on the character sets, the upper ones are
+modifiers and will change the character set for the next input respectively to
+the previous and the next one. The left and right ones of the center area are,
+respectively, the delete and space.
 
-To exit the program enter eight regions excluding the center one. You can start
-with the upper left one, go to the upper middle one ... without going back to
-the center and finally hitting the upper left one again.
+To exit the program enter eight regions excluding the one in the center. You can
+start with the upper left one, go to the upper middle one ... Without going back
+to the center and finally hitting the upper left one again.
