@@ -44,10 +44,12 @@
 #define DEFAULT_FONT    "fixed"
 
 #define MAX_CHARSET      3
-#define MAX_CHAR         32 // Chars per charsets
+#define MAX_CHAR         32 // Chars per charset
 
 #define MAX_GESTURES_BUFFER      3
 #define QUIT_GESTURE			 8
+
+#define LONG_EXPOSURE_DELAY		2000L
 
 #define FILL_REGION4(a, b, c, d)        {a, b, c, d, a, a, a, a, a}
 #define FILL_REGION5(a, b, c, d, e)     {a, b, c, d, e, a, a, a, a}
@@ -224,6 +226,7 @@ int main(int argc, char **argv){
 	int buffer_count = 0;
 	int invalid_gesture = 0;
 	int modifier = 1;
+	Time last_cross_timestamp = 0L;
 	GtkWidget *gtk_text;
 	GtkTextBuffer *text;
 	GtkTextIter end, start;
@@ -376,10 +379,15 @@ int main(int argc, char **argv){
 						gchar c = g_utf8_get_char(&(charsets[current_charset]
 									[( buffer[0] - 1) << 2]));
 						if (c == '<') {
+							if (e.xcrossing.time - last_cross_timestamp > LONG_EXPOSURE_DELAY) {
+								gtk_text_buffer_get_bounds(text, &start, &end);
+								gtk_text_buffer_delete(text, &start, &end);
+							} else {
 							gtk_text_buffer_get_iter_at_offset(text, &end, -1);
 							start = end;
 							gtk_text_iter_backward_char(&end);
 							gtk_text_buffer_delete(text, &start, &end);
+							}
 						}
 						else {
 							if (c == '>') {
@@ -430,6 +438,9 @@ int main(int argc, char **argv){
 						gtk_main_iteration();
 					buffer_count = 0;
 					break;
+				}
+				if(!buffer_count) {
+					last_cross_timestamp = e.xcrossing.time;
 				}
 				buffer[buffer_count] = region_name[0] - 48;
 				buffer_count++;
