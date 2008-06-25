@@ -391,7 +391,13 @@ int main(int argc, char **argv){
 						}
 						else {
 							if (c == '>') {
-								char ch = ' ';
+								char ch;
+								if (e.xcrossing.time - last_cross_timestamp >
+										LONG_EXPOSURE_DELAY) {
+									ch = '\n';
+								} else {
+									ch = ' ';
+								}
 								gtk_text_buffer_insert_at_cursor(text, &ch , 1);
 							}
 							else {

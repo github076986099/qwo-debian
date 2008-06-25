@@ -24,7 +24,8 @@ change the character set for the next inputed character respectively to the
 previous and the next set and go back to the current one. The left and right
 ones of the center area are, respectively, the delete and space. You can delete
 the whole text buffer content by staying at least three seconds on the region
-containing the delete action.
+containing the delete action, doing the same on the space will add a new line at
+the cursor position.
 
 To exit the program enter eight regions excluding the one in the center. You can
 start with the upper left one, go to the upper middle one ... Without going back
