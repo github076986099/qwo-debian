@@ -30,3 +30,12 @@ the cursor position.
 To exit the program enter eight regions excluding the one in the center. You can
 start with the upper left one, go to the upper middle one ... Without going back
 to the center and finally hitting the upper left one again.
+
+It is possible to customize the layout by adding a configuration file in your
+home directory named .qworc or with the command line switch -c <file_name>.
+You first need to install libconfig (http://www.hyperrealm.com/libconfig/).
+An example configuration file for a French layout is data/qworc. You can access
+these characters by issuing a normal gesture and instead of going back to the
+center, go back to the first region you entered.
+The definitions for letters are the ones defined in /usr/include/X11/keysymdef.h,
+without the "XK_" prefix.

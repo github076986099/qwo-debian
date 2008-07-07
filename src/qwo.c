@@ -30,6 +30,14 @@
 #include <X11/extensions/shape.h>
 #include <gtk/gtk.h>
 
+#include <X11/keysym.h>
+#include <wchar.h>
+#include <locale.h>
+
+#ifdef HAVE_LIBCONFIG
+#include <libconfig.h>
+#endif
+
 #define WIDTH   300
 #define HEIGHT  300
 
@@ -43,10 +51,15 @@
 //#define DEFAULT_FONT    "-*-courier-bold-*-*-12-*-*-*-*-*-*-*"
 #define DEFAULT_FONT    "fixed"
 
+#define CONFIG_FILE		"/.qworc"
+#define MAX_CONFIG_PATH 30
+
 #define MAX_CHARSET      3
 #define MAX_CHAR         32 // Chars per charset
 
-#define MAX_GESTURES_BUFFER      3
+#define MAX_CHAR_PER_REGION		 5
+
+#define MAX_GESTURES_BUFFER      6
 #define QUIT_GESTURE			 8
 
 #define LONG_EXPOSURE_DELAY		2000L
@@ -62,10 +75,15 @@
 	 ((b - a) < 0) ? (((a - 1) << 2) + ((b - a) & (8 - 1))) : \
 	 (1 << 5) + (b - a) - (1 << 3))
 
+#define DIRECTION(a, b)  \
+		(ABS(b - a) == 1) ? ( (b - a) == 1) : (b - a) < 0
+
 char charsets[][MAX_CHAR] = {
 	"ab>ced<fighj>klmonpqrs.tuvw,<xyz",
 	"AB>CED<FIGHJ>KLMONPQRS.TUVW,<XYZ",
 	"1-!?2?$+3')4>5@\n6;&,7.:/8_=9<0(\""};
+
+wchar_t custom_charset[MAX_REGIONS - 1][MAX_CHAR_PER_REGION];
 
 const XPoint point1 = { WIDTH / 3, 0 };
 const XPoint point2 = { 2*(WIDTH / 3), 0 };
@@ -207,26 +225,86 @@ void draw_grid(Display *dpy, Window toplevel, GC gc){
 
 }
 
+#ifdef HAVE_LIBCONFIG
+int read_config(char *config_path){
+	int j, i = 0;
+	config_t configuration;
+	FILE * file;
+	const char *keysym_name;
+	//gchar character;
+	KeySym key;
+	const config_setting_t *keymap;
+	const config_setting_t *line;
+
+	if ((file = fopen(config_path, "r")) == NULL) {
+		fprintf(stderr, "%s : Can't open configuration file\n", config_path);
+		return 0;
+	}
+	config_init(&configuration);
+	if (config_read(&configuration, file) == CONFIG_FALSE) {
+		fprintf(stderr, "File %s, Line %i : %s\n", config_path,
+				config_error_line(&configuration),
+				config_error_text(&configuration));
+		exit(3);
+	}
+	fclose(file);
+	keymap = config_lookup(&configuration, "charset");
+
+	if (keymap)
+		for (i = 0 ; i < config_setting_length(keymap) ; i++) {
+			line = config_setting_get_elem(keymap, i);
+			for (j = 0 ; j < config_setting_length(line); j++) {
+				keysym_name = config_setting_get_string_elem(line, j);
+				if ((key = XStringToKeysym(keysym_name)) == NoSymbol) {
+					fprintf(stderr, "KeySym not found : %s\n",
+							config_setting_get_string_elem(line, j));
+					exit(3);
+				}
+				if (key >= 0x01000100)
+					custom_charset[i][j] = key & 0xffffff;
+				else
+					custom_charset[i][j] = key;
+			}
+			for (; j < MAX_CHAR_PER_REGION; j++) {
+				custom_charset[i][j] = '\0';
+			}
+		}
+		for (; i < MAX_REGIONS - 1 ; i++) {
+			for ( j = 0 ; j < MAX_CHAR_PER_REGION; j++) {
+				custom_charset[i][j] = '\0';
+			}
+		}
+	config_destroy(&configuration);
+	return 1;
+}
+#endif
+
 int main(int argc, char **argv){
 	Display *dpy;
 	char *display_name;
 	Window toplevel, global_window;
-	XFontStruct *font_info;
 	XSetWindowAttributes attributes;
+
+	char *font_name = NULL;
+	XFontStruct *font_info;
 	unsigned long valuemask;
-	int event_base, error_base;
-	int shape_ext_major, shape_ext_minor;
 	XGCValues xgc;
 	GC gc;
+
+	int event_base, error_base;
+	int shape_ext_major, shape_ext_minor;
+
+	char *config_path = NULL;
+	int loaded_config = 0;
 	int run = 0;
 	int options;
-	char *font_name = NULL;
 	int current_charset = 1;
 	int buffer[MAX_GESTURES_BUFFER];
 	int buffer_count = 0;
 	int invalid_gesture = 0;
 	int modifier = 1;
 	Time last_cross_timestamp = 0L;
+
 	GtkWidget *gtk_text;
 	GtkTextBuffer *text;
 	GtkTextIter end, start;
@@ -234,16 +312,25 @@ int main(int argc, char **argv){
 	GtkWidget *gtk_window;
 #endif
 
-	options = getopt(argc, argv, "f:");
+	options = getopt(argc, argv, "f:c:");
 
 	switch(options){
 		case 'f':
 			font_name = optarg;
 			break;
+		case 'c':
+			config_path = optarg;
+			break;
 	}
 
 	display_name = XDisplayName(NULL);
 	dpy = XOpenDisplay(display_name);
+
+	if (!setlocale(LC_CTYPE, ""))
+	{
+		fprintf(stderr, "Locale not specified. Check LANG, LC_CTYPE, LC_ALL. ");
+		return 1;
+	}
 
 	if (dpy == NULL){
 		fprintf(stderr, "%s : Can't open display %s\n", argv[0],
@@ -256,6 +343,19 @@ int main(int argc, char **argv){
 				"%s\n", argv[0], display_name);
 		exit(2);
 	}
+
+#ifdef HAVE_LIBCONFIG
+	if (config_path) {
+		loaded_config = read_config(config_path);
+	} else {
+		char config_path[MAX_CONFIG_PATH];
+		char *home_dir = getenv("HOME");
+		strncat(config_path, home_dir, MAX_CONFIG_PATH);
+		strncat(config_path + strlen(home_dir), CONFIG_FILE,
+				MAX_CONFIG_PATH - strlen(home_dir));
+		loaded_config = read_config(config_path);
+	}
+#endif
 
 	gtk_init(NULL, NULL);
 	gtk_text = gtk_text_view_new ();
@@ -412,11 +512,23 @@ int main(int argc, char **argv){
 									charsets[current_charset]);
 						}
 					} else {
-						gchar c = g_utf8_get_char(&(charsets[current_charset]
+						char c[4];
+						gint size;
+						if ((buffer[0] == buffer[buffer_count - 1]) && loaded_config) {
+								buffer_count = (buffer_count - 1) >> 1;
+							if (DIRECTION(buffer[0], buffer[1])) {
+								size = g_unichar_to_utf8(custom_charset[buffer[0] - 1][(buffer_count << 1) - 1], c);
+							} else {
+								size = g_unichar_to_utf8((custom_charset[buffer[0] - 1][(buffer_count  << 1 ) - 2]), c);
+							}
+						} else {
+							c[0] = g_utf8_get_char(&(charsets[current_charset]
 									[CHAR_FROM_GESTURE(buffer[0], buffer[buffer_count - 1])]));
-						if ((!current_charset) && ((c == '<') || (c == '>'))){
+							size = 1;
+						}
+						if ((!current_charset) && ((c[0] == '<') || (c[0] == '>'))){
 							modifier = 1;
-							if (c == '<') {
+							if (c[0] == '<') {
 								current_charset = MAX_CHARSET - 1;
 							}
 							else {
@@ -430,7 +542,8 @@ int main(int argc, char **argv){
 							buffer_count = 0;
 							break;
 						} else {
-							gtk_text_buffer_insert_at_cursor(text, &c, 1);
+							if (*c != '\0')
+								gtk_text_buffer_insert_at_cursor(text, c, size);
 						}
 						if (modifier){
 							XClearWindow(dpy, toplevel);

@@ -12,6 +12,8 @@ AC_STDC_HEADERS
 
 PKG_CHECK_MODULES(DEPENDENCIES, gtk+-2.0)
 
+AC_CHECK_LIB(config, config_read)
+
 AC_ARG_ENABLE(standalone,
 	AC_HELP_STRING([--enable-standalone], [run with a text view window]),
 	enable_standalone=$enableval, enable_standalone=no)

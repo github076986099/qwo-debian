@@ -1,0 +1,18 @@
+# Sample config file for qwo
+# You can define a custom keyboard layout here
+
+charset = (
+# Definitions for the first region, the first one is going to the previous
+# region and back, the second one to the next one and back before going back to
+# the center region
+[ "agrave", "at" ],
+# Definitions for the second region, including characters for a motion of two
+# regions
+[ "eacute", "egrave", "ccedilla", "ecircumflex" ],
+[ ],
+[ ],
+[ "ocircumflex" ],
+[ ],
+[ "ugrave" ],
+[ ]
+);
