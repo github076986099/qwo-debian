@@ -1,8 +1,7 @@
 #
 # misc. data files
 #
-# None yet
-dist_pkgdata_DATA = qwo.desktop qwo.png
+dist_pkgdata_DATA = qwo.desktop qwo.png qworc
 
 #
 # desktop integration: .desktop file
