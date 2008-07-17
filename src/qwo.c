@@ -231,7 +231,6 @@ int read_config(char *config_path){
 	config_t configuration;
 	FILE * file;
 	const char *keysym_name;
-	//gchar character;
 	KeySym key;
 	const config_setting_t *keymap;
 	const config_setting_t *line;
