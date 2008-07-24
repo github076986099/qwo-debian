@@ -418,10 +418,12 @@ int main(int argc, char **argv){
 		XNextEvent(dpy, &e);
 		switch (e.type) {
 			case EnterNotify:
-				XFetchName(dpy, e.xcrossing.window, &region_name);
-				char region = region_name[0] - 48;
-				if (region == 0)
-					run = 1;
+				if (XFetchName(dpy, e.xcrossing.window, &region_name)) {
+					char region = region_name[0] - 48;
+					if (region == 0)
+						run = 1;
+					XFree(region_name);
+				}
 		}
 	}
 
@@ -446,11 +448,12 @@ int main(int argc, char **argv){
 				XSync(dpy, False);
 				break;
 			case LeaveNotify:
-				XFetchName(dpy, e.xcrossing.window, &region_name);
+				//XFetchName(dpy, e.xcrossing.window, &region_name);
 				break;
 			case EnterNotify:
 				XFetchName(dpy, e.xcrossing.window, &region_name);
 				char region = region_name[0] - 48;
+				XFree(region_name);
 
 				if (invalid_gesture) {
 					if (region == 0) {
@@ -560,7 +563,7 @@ int main(int argc, char **argv){
 				if(!buffer_count) {
 					last_cross_timestamp = e.xcrossing.time;
 				}
-				buffer[buffer_count] = region_name[0] - 48;
+				buffer[buffer_count] = region;
 				buffer_count++;
 				break;
 				default:
