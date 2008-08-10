@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/extensions/shape.h>
@@ -54,9 +55,6 @@
 #define CONFIG_FILE		"/.qworc"
 #define MAX_CONFIG_PATH 30
 
-#define MAX_CHARSET      3
-#define MAX_CHAR         32 // Chars per charset
-
 #define MAX_CHAR_PER_REGION		 5
 
 #define MAX_GESTURES_BUFFER      6
@@ -70,18 +68,19 @@
 
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 
-#define CHAR_FROM_GESTURE(a, b)  \
-	((ABS(b - a) < MAX_GESTURES_BUFFER ) ? (((a - 1) << 2) + b - a) :\
-	 ((b - a) < 0) ? (((a - 1) << 2) + ((b - a) & (8 - 1))) : \
-	 (1 << 5) + (b - a) - (1 << 3))
-
 #define DIRECTION(a, b)  \
 		(ABS(b - a) == 1) ? ( (b - a) == 1) : (b - a) < 0
 
-char charsets[][MAX_CHAR] = {
-	"ab>ced<fighj>klmonpqrs.tuvw,<xyz",
-	"AB>CED<FIGHJ>KLMONPQRS.TUVW,<XYZ",
-	"1-!?2?$+3')4>5@\n6;&,7.:/8_=9<0(\""};
+char charset[][MAX_REGIONS] = {
+		"ab>>??yz",
+		"ced?????",
+		"<figh???",
+		"??j>k???",
+		"??lmonp?",
+		"????qsr?",
+		"w???t,uv",
+		"x?????.<"
+};
 
 wchar_t custom_charset[MAX_REGIONS - 1][MAX_CHAR_PER_REGION];
 
@@ -111,7 +110,8 @@ const XPoint point_nw = { WIDTH, 0};
 const XPoint point_sw = { WIDTH, HEIGHT};
 const XPoint point_se = { 0, HEIGHT};
 
-void init_regions(Display *dpy, Window toplevel){
+void init_regions(Display *dpy, Window toplevel)
+{
 	Window region_window;
 	XSetWindowAttributes attributes;
 	Region region;
@@ -152,7 +152,8 @@ void init_regions(Display *dpy, Window toplevel){
 	}
 }
 
-int load_font(Display *dpy, XFontStruct **font_info, char *font){
+int load_font(Display *dpy, XFontStruct **font_info, char *font)
+{
 	if (font == NULL)
 		font = DEFAULT_FONT;
 	if ((*font_info = XLoadQueryFont(dpy, font)) == NULL){
@@ -162,44 +163,36 @@ int load_font(Display *dpy, XFontStruct **font_info, char *font){
 	return 1;
 }
 
-void display_charset(Display *dpy, Window win, GC gc, XFontStruct *font_info,
-		char *charset){
+void display_charset(Display *dpy, Window win, GC gc, XFontStruct *font_info)
+{
 	int len;
 	int font_height;
-	int i;
+	int i,j, count;
 	int offset;
 	XTextItem item = { NULL, 1, 0, font_info->fid };
 
 	font_height = font_info->ascent + font_info->descent;
-	//lbearing from Xcharstruct seems more appropriate
-	len = XTextWidth(font_info, charset, 1);
+	len = XTextWidth(font_info, &charset[0][0], 1);
 	offset = WIDTH / 8;
-	item.chars = (char *) charset;
-	XDrawText(dpy, win, gc, len, font_height, &item, 1);
-	item.chars = (char *) charset + 24;
-	XDrawText(dpy, win, gc, len, HEIGHT - font_info->descent,
-			&item, 1);
-	for (i = 1; i < 8 ; i++){
-		item.chars = (char *) charset + i;
-		XDrawText(dpy, win, gc, offset * i, font_height, &item, 1);
-		item.chars = (char *) charset + i + 8;
-		XDrawText(dpy, win, gc, WIDTH - len, offset * i + font_info->ascent,
-				&item, 1);
-		item.chars = (char *) charset + (24 - i);
-		XDrawText(dpy, win, gc, offset * i,
-				HEIGHT - font_info->descent, &item, 1);
-		item.chars = (char *) charset + 32 - i;
-		XDrawText(dpy, win, gc, font_info->max_bounds.lbearing,
-				offset * i + font_info->ascent, &item, 1);
+
+	count = 0;
+	for (i = 0; i < 3; i++) {
+		for (j = 0; j < 3 && count != 8; j++, count++) {
+			item.chars = &charset[i][j];
+			XDrawText(dpy, win, gc, offset * count, font_height, &item, 1);
+			item.chars = &charset[i + 4][j + 4];
+			XDrawText(dpy, win, gc, WIDTH - (offset * count) - len, HEIGHT - font_info->descent, &item, 1);
+			item.chars = &charset[i + 2][j + 2];
+			XDrawText(dpy, win, gc, WIDTH - 2 * len, offset * count + font_height, &item, 1);
+			item.chars = &charset[(i + 6) & 7][(j + 6) & 7];
+			XDrawText(dpy, win, gc, len, HEIGHT - (offset * count), &item, 1);
+		}
 	}
-	item.chars = (char *) charset + 8;
-	XDrawText(dpy, win, gc, offset * 8 - len, font_height, &item, 1);
-	item.chars = (char *) charset + 16;
-	XDrawText(dpy, win, gc, offset * 8 - len, HEIGHT - font_info->descent,
-			&item, 1);
+
 }
 
-void draw_grid(Display *dpy, Window toplevel, GC gc){
+void draw_grid(Display *dpy, Window toplevel, GC gc)
+{
 	XColor grid_color, exact;
 	Colormap cmap;
 
@@ -226,7 +219,8 @@ void draw_grid(Display *dpy, Window toplevel, GC gc){
 }
 
 #ifdef HAVE_LIBCONFIG
-int read_config(char *config_path){
+int read_config(char *config_path)
+{
 	int j, i = 0;
 	config_t configuration;
 	FILE * file;
@@ -278,7 +272,8 @@ int read_config(char *config_path){
 }
 #endif
 
-int main(int argc, char **argv){
+int main(int argc, char **argv)
+{
 	Display *dpy;
 	char *display_name;
 	Window toplevel, global_window;
@@ -297,11 +292,10 @@ int main(int argc, char **argv){
 	int loaded_config = 0;
 	int run = 0;
 	int options;
-	int current_charset = 1;
 	int buffer[MAX_GESTURES_BUFFER];
 	int buffer_count = 0;
 	int invalid_gesture = 0;
-	int modifier = 1;
+	int shift_modifier = 1;
 	Time last_cross_timestamp = 0L;
 
 	GtkWidget *gtk_text;
@@ -359,6 +353,7 @@ int main(int argc, char **argv){
 	gtk_init(NULL, NULL);
 	gtk_text = gtk_text_view_new ();
 	text = gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtk_text));
+
 #ifdef TEXT_VIEW
 	gtk_window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_default_size(GTK_WINDOW(gtk_window), 200, 100);
@@ -407,8 +402,7 @@ int main(int argc, char **argv){
 	XSetFont(dpy, gc, font_info->fid);
 
 	draw_grid(dpy, toplevel, gc);
-	display_charset(dpy, toplevel, gc, font_info,
-			charsets[current_charset]);
+	display_charset(dpy, toplevel, gc, font_info);
 	XSync(dpy, False);
 
 	while(!run) {
@@ -435,17 +429,10 @@ int main(int argc, char **argv){
 		switch (e.type) {
 			case Expose:
 				draw_grid(dpy, toplevel, gc);
-				display_charset(dpy, toplevel, gc, font_info,
-						charsets[current_charset]);
+				display_charset(dpy, toplevel, gc, font_info);
 				XSync(dpy, False);
 				break;
 			case ButtonPress:
-				XClearWindow(dpy, toplevel);
-				draw_grid(dpy, toplevel, gc);
-				current_charset = (current_charset + 1) % MAX_CHARSET;
-				display_charset(dpy, toplevel, gc, font_info,
-						charsets[(current_charset)]);
-				XSync(dpy, False);
 				break;
 			case LeaveNotify:
 				//XFetchName(dpy, e.xcrossing.window, &region_name);
@@ -454,6 +441,8 @@ int main(int argc, char **argv){
 				XFetchName(dpy, e.xcrossing.window, &region_name);
 				char region = region_name[0] - 48;
 				XFree(region_name);
+				char c[4];
+				gint size;
 
 				if (invalid_gesture) {
 					if (region == 0) {
@@ -477,107 +466,87 @@ int main(int argc, char **argv){
 					if (buffer_count == 0) {
 						break;
 					}
-					if (buffer_count == 1) {
-						gchar c = g_utf8_get_char(&(charsets[current_charset]
-									[( buffer[0] - 1) << 2]));
-						if (c == '<') {
-							if (e.xcrossing.time - last_cross_timestamp > LONG_EXPOSURE_DELAY) {
-								gtk_text_buffer_get_bounds(text, &start, &end);
-								gtk_text_buffer_delete(text, &start, &end);
-							} else {
-							gtk_text_buffer_get_iter_at_offset(text, &end, -1);
-							start = end;
-							gtk_text_iter_backward_char(&end);
-							gtk_text_buffer_delete(text, &start, &end);
-							}
-						}
-						else {
-							if (c == '>') {
-								char ch;
-								if (e.xcrossing.time - last_cross_timestamp >
-										LONG_EXPOSURE_DELAY) {
-									ch = '\n';
-								} else {
-									ch = ' ';
-								}
-								gtk_text_buffer_insert_at_cursor(text, &ch , 1);
-							}
-							else {
-								gtk_text_buffer_insert_at_cursor(text, &c, 1);
-							}
-						}
-						if (modifier){
-							XClearWindow(dpy, toplevel);
-							draw_grid(dpy, toplevel, gc);
-							current_charset = modifier = 0;
-							display_charset(dpy, toplevel, gc, font_info,
-									charsets[current_charset]);
+
+					if ((buffer[0] == buffer[buffer_count - 1]) && loaded_config && (buffer_count > 1)) {
+						buffer_count = (buffer_count - 1) >> 1;
+						if (DIRECTION(buffer[0], buffer[1])) {
+							size = g_unichar_to_utf8(custom_charset[buffer[0] - 1][(buffer_count << 1) - 1], c);
+						} else {
+							size = g_unichar_to_utf8((custom_charset[buffer[0] - 1][(buffer_count  << 1 ) - 2]), c);
 						}
 					} else {
-						char c[4];
-						gint size;
-						if ((buffer[0] == buffer[buffer_count - 1]) && loaded_config) {
-								buffer_count = (buffer_count - 1) >> 1;
-							if (DIRECTION(buffer[0], buffer[1])) {
-								size = g_unichar_to_utf8(custom_charset[buffer[0] - 1][(buffer_count << 1) - 1], c);
-							} else {
-								size = g_unichar_to_utf8((custom_charset[buffer[0] - 1][(buffer_count  << 1 ) - 2]), c);
-							}
+						c[0] = g_utf8_get_char(&(charset[buffer[0] - 1][buffer[buffer_count - 1] - 1]));
+						size = 1;
+					}
+
+					if (c[0] == '<') {
+						if (e.xcrossing.time - last_cross_timestamp > LONG_EXPOSURE_DELAY) {
+							gtk_text_buffer_get_bounds(text, &start, &end);
+							gtk_text_buffer_delete(text, &start, &end);
 						} else {
-							c[0] = g_utf8_get_char(&(charsets[current_charset]
-									[CHAR_FROM_GESTURE(buffer[0], buffer[buffer_count - 1])]));
-							size = 1;
+							if (buffer_count == 1) {
+								gtk_text_buffer_get_iter_at_offset(text, &end, -1);
+								start = end;
+								gtk_text_iter_backward_char(&end);
+								gtk_text_buffer_delete(text, &start, &end);
+							}
 						}
-						if ((!current_charset) && ((c[0] == '<') || (c[0] == '>'))){
-							modifier = 1;
-							if (c[0] == '<') {
-								current_charset = MAX_CHARSET - 1;
+					} else if (c[0] == '>') {
+						if (buffer_count == 1) {
+							char ch;
+							if (e.xcrossing.time - last_cross_timestamp > LONG_EXPOSURE_DELAY) {
+								ch = '\n';
+							} else {
+								ch = ' ';
 							}
-							else {
-								current_charset = 1;
-							}
+							gtk_text_buffer_insert_at_cursor(text, &ch , 1);
+						} else if (shift_modifier) {
+							shift_modifier = 0;
+						} else if (buffer_count == 3) {
+							shift_modifier = 1;
+						} else if (buffer_count == 4) {
+							shift_modifier = 2;
+						}
+							/* Print upper case charset 
 							XClearWindow(dpy, toplevel);
 							draw_grid(dpy, toplevel, gc);
-							display_charset(dpy, toplevel, gc, font_info,
-									charsets[current_charset]);
+							display_charset(dpy, toplevel, gc, font_info);
 							XSync(dpy, False);
 							buffer_count = 0;
 							break;
-						} else {
-							if (*c != '\0')
-								gtk_text_buffer_insert_at_cursor(text, c, size);
-						}
-						if (modifier){
-							XClearWindow(dpy, toplevel);
-							draw_grid(dpy, toplevel, gc);
-							current_charset = modifier = 0;
-							display_charset(dpy, toplevel, gc, font_info,
-									charsets[current_charset]);
-						}
+							*/
+					} else {
+						if (shift_modifier)
+							*c = toupper(*c);
+						if (shift_modifier == 1)
+							shift_modifier = 0;
+						gtk_text_buffer_insert_at_cursor(text, c, size);
 					}
+
 					while (gtk_events_pending())
 						gtk_main_iteration();
 					buffer_count = 0;
 					break;
 				}
+
 				if(!buffer_count) {
 					last_cross_timestamp = e.xcrossing.time;
 				}
 				buffer[buffer_count] = region;
 				buffer_count++;
 				break;
-				default:
-					printf("Received event %i\n", e.type);
-				}
-		}
+			default:
+				printf("Received event %i\n", e.type);
+			}
+	}
 
-		gtk_text_buffer_get_bounds(text, &start, &end);
-		fprintf(stdout, "%s\n", (char *)gtk_text_buffer_get_text(text, &start, &end, FALSE));
-		//gtk_exit(0);
-		XFreeFont(dpy, font_info);
-		XFreeGC(dpy, gc);
-		XDestroyWindow(dpy, toplevel);
-		XCloseDisplay(dpy);
+	gtk_text_buffer_get_bounds(text, &start, &end);
+	fprintf(stdout, "%s\n", (char *)gtk_text_buffer_get_text(text, &start, &end, FALSE));
+	//gtk_exit(0);
+	XFreeFont(dpy, font_info);
+	XFreeGC(dpy, gc);
+	XDestroyWindow(dpy, toplevel);
+	XCloseDisplay(dpy);
 
-		exit(0);
+	exit(0);
 }
