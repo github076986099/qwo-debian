@@ -163,7 +163,7 @@ int load_font(Display *dpy, XFontStruct **font_info, char *font)
 	return 1;
 }
 
-void display_charset(Display *dpy, Window win, GC gc, XFontStruct *font_info)
+void display_charset(Display *dpy, Window win, GC gc, XFontStruct *font_info, int upper_case)
 {
 	int len;
 	int font_height;
@@ -178,13 +178,34 @@ void display_charset(Display *dpy, Window win, GC gc, XFontStruct *font_info)
 	count = 0;
 	for (i = 0; i < 3; i++) {
 		for (j = 0; j < 3 && count != 8; j++, count++) {
-			item.chars = &charset[i][j];
+			char c;
+			if (upper_case) {
+				c = toupper((int) charset[i][j]);
+				item.chars = &c;
+			}
+			else
+				item.chars = &charset[i][j];
 			XDrawText(dpy, win, gc, offset * count, font_height, &item, 1);
-			item.chars = &charset[i + 4][j + 4];
+			if (upper_case) {
+				c = toupper((int) charset[i + 4][j + 4]);
+				item.chars = &c;
+			}
+			else
+				item.chars = &charset[i + 4][j + 4];
 			XDrawText(dpy, win, gc, WIDTH - (offset * count) - len, HEIGHT - font_info->descent, &item, 1);
-			item.chars = &charset[i + 2][j + 2];
+			if (upper_case) {
+				c = toupper((int) charset[i + 2][j + 2]);
+				item.chars = &c;
+			}
+			else
+				item.chars = &charset[i + 2][j + 2];
 			XDrawText(dpy, win, gc, WIDTH - 2 * len, offset * count + font_height, &item, 1);
-			item.chars = &charset[(i + 6) & 7][(j + 6) & 7];
+			if (upper_case) {
+				c = toupper((int) charset[(i + 6) & 7][(j + 6) & 7]);
+				item.chars = &c;
+			}
+			else
+				item.chars = &charset[(i + 6) & 7][(j + 6) & 7];
 			XDrawText(dpy, win, gc, len, HEIGHT - (offset * count), &item, 1);
 		}
 	}
@@ -402,7 +423,7 @@ int main(int argc, char **argv)
 	XSetFont(dpy, gc, font_info->fid);
 
 	draw_grid(dpy, toplevel, gc);
-	display_charset(dpy, toplevel, gc, font_info);
+	display_charset(dpy, toplevel, gc, font_info, shift_modifier);
 	XSync(dpy, False);
 
 	while(!run) {
@@ -429,7 +450,7 @@ int main(int argc, char **argv)
 		switch (e.type) {
 			case Expose:
 				draw_grid(dpy, toplevel, gc);
-				display_charset(dpy, toplevel, gc, font_info);
+				display_charset(dpy, toplevel, gc, font_info, shift_modifier);
 				XSync(dpy, False);
 				break;
 			case ButtonPress:
@@ -507,19 +528,24 @@ int main(int argc, char **argv)
 						} else if (buffer_count == 4) {
 							shift_modifier = 2;
 						}
-							/* Print upper case charset 
+						if (buffer_count != 1) {
 							XClearWindow(dpy, toplevel);
 							draw_grid(dpy, toplevel, gc);
-							display_charset(dpy, toplevel, gc, font_info);
+							display_charset(dpy, toplevel, gc, font_info, shift_modifier);
 							XSync(dpy, False);
 							buffer_count = 0;
 							break;
-							*/
+						}
 					} else {
 						if (shift_modifier)
 							*c = toupper(*c);
-						if (shift_modifier == 1)
+						if (shift_modifier == 1) {
 							shift_modifier = 0;
+							XClearWindow(dpy, toplevel);
+							draw_grid(dpy, toplevel, gc);
+							display_charset(dpy, toplevel, gc, font_info, shift_modifier);
+							XSync(dpy, False);
+						}
 						gtk_text_buffer_insert_at_cursor(text, c, size);
 					}
 
