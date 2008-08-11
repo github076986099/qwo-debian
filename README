@@ -11,31 +11,31 @@ http://mrl.nyu.edu/~perlin/demos/quikwriting.html
 To test the software on a desktop you might want to configure it with the
 destination window, by issuing:
 #./configure --enable-standalone
-which will add support window containing the inputed text.
+which will add a window containing the inputed text.
 
 You can specify another font to use with the -f switch, for example:
 #qwo -f "-*-courier-bold-*-*-24-*-*-*-*-*-*-*"
 
-The currently character sets are the lowercase letters, uppercase and numbers.
-To switch the current set click in the window.
+The character > appear twice, the one in the upper left region is a modifier
+and will change the case to uppercase for the next inputed character; extending
+the gesture one region past its normal destination will lock the case to upper,
+to return to normal issue the > again.
 
-The characters < and > appears twice, the upper ones are modifiers and will
-change the character set for the next inputed character respectively to the
-previous and the next set and go back to the current one. The left and right
-ones of the center area are, respectively, the delete and space. You can delete
-the whole text buffer content by staying at least three seconds on the region
-containing the delete action, doing the same on the space will add a new line at
-the cursor position.
+The left < and right > of the center area are, respectively, the delete and
+space. You can delete the whole text buffer content by staying at least three
+seconds on the region containing the delete action, doing the same on the space
+will add a new line at the cursor position.
 
 To exit the program enter eight regions excluding the one in the center. You can
 start with the upper left one, go to the upper middle one ... Without going back
 to the center and finally hitting the upper left one again.
 
 It is possible to customize the layout by adding a configuration file in your
-home directory named .qworc or with the command line switch -c <file_name>.
-You first need to install libconfig (http://www.hyperrealm.com/libconfig/).
-An example configuration file for a French layout is data/qworc. You can access
-these characters by issuing a normal gesture and instead of going back to the
-center, go back to the first region you entered.
-The definitions for letters are the ones defined in /usr/include/X11/keysymdef.h,
+home directory named .qworc or with the command line switch -c <file_name>.  You
+first need to install libconfig (http://www.hyperrealm.com/libconfig/).  An
+example configuration file for a French layout is provided in data/qworc. You
+can access these characters by issuing a normal gesture and instead of going
+back to the center, go back to the first region entered.
+
+The definitions for the letters are the ones defined in /usr/include/X11/keysymdef.h
 without the "XK_" prefix.
