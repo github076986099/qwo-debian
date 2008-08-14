@@ -490,10 +490,17 @@ int main(int argc, char **argv)
 
 					if ((buffer[0] == buffer[buffer_count - 1]) && loaded_config && (buffer_count > 1)) {
 						buffer_count = (buffer_count - 1) >> 1;
-						if (DIRECTION(buffer[0], buffer[1])) {
-							size = g_unichar_to_utf8(custom_charset[buffer[0] - 1][(buffer_count << 1) - 1], c);
-						} else {
-							size = g_unichar_to_utf8((custom_charset[buffer[0] - 1][(buffer_count  << 1 ) - 2]), c);
+						wchar_t *index;
+						if (DIRECTION(buffer[0], buffer[1]))
+							index = &(custom_charset[buffer[0] - 1][(buffer_count << 1) - 1]);
+						else
+							index = &(custom_charset[buffer[0] - 1][(buffer_count  << 1 ) - 2]);
+						if (!shift_modifier)
+							size = g_unichar_to_utf8(*index, c);
+						else {
+							KeySym lower, upper;
+							XConvertCase(*index, &lower, &upper);
+							size = g_unichar_to_utf8(upper, c);
 						}
 					} else {
 						c[0] = g_utf8_get_char(&(charset[buffer[0] - 1][buffer[buffer_count - 1] - 1]));
@@ -537,8 +544,8 @@ int main(int argc, char **argv)
 							break;
 						}
 					} else {
-						if (shift_modifier)
-							*c = toupper(*c);
+						if ((shift_modifier) && (size == 1))
+								*c = toupper(*c);
 						if (shift_modifier == 1) {
 							shift_modifier = 0;
 							XClearWindow(dpy, toplevel);
