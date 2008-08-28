@@ -10,19 +10,11 @@ AC_PROG_CC
 AC_PROG_CC_STDC
 AC_STDC_HEADERS
 
-PKG_CHECK_MODULES(DEPENDENCIES, gtk+-2.0)
+AC_CHECK_LIB(X11, XOpenDisplay)
+
+AC_CHECK_LIB(Xext, XShapeQueryExtension)
 
 AC_CHECK_LIB(config, config_read)
-
-AC_ARG_ENABLE(standalone,
-	AC_HELP_STRING([--enable-standalone], [run with a text view window]),
-	enable_standalone=$enableval, enable_standalone=no)
-
-if test x$enable_standalone != xno ; then
-	AC_DEFINE(TEXT_VIEW, [1], [run with a text view window])
-fi
-
-AC_SUBST(DEPENDENCIES)
 
 AC_OUTPUT([
 Makefile

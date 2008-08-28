@@ -1,3 +1,12 @@
+	* Transmit keys using XKeyEvent on focused window
+	* Remove Gtk dependencies
+	* Add WM input method hints
+	* Add configuration file support to add custom internationalized characters
+	* Add French configuration file example
+	* Add long stay on particular regions
+	* Simplify charset manipulation, changed charset layout
+	* Free window names
+
 2008-05-28	Charles Clément <caratorn@gmail.com>
 	* 0.1 release
 	* Compromise for the numbers to fit in reasonable place

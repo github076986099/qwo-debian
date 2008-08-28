@@ -29,10 +29,8 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/extensions/shape.h>
-#include <gtk/gtk.h>
 
 #include <X11/keysym.h>
-#include <wchar.h>
 #include <locale.h>
 
 #ifdef HAVE_LIBCONFIG
@@ -69,7 +67,7 @@
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 
 #define DIRECTION(a, b)  \
-		(ABS(b - a) == 1) ? ( (b - a) == 1) : (b - a) < 0
+		(abs(b - a) == 1) ? ( (b - a) == 1) : (b - a) < 0
 
 char charset[][MAX_REGIONS] = {
 		"abc??"">>z",
@@ -82,7 +80,7 @@ char charset[][MAX_REGIONS] = {
 		"y?????x<"
 };
 
-wchar_t custom_charset[MAX_REGIONS - 1][MAX_CHAR_PER_REGION];
+KeySym custom_charset[MAX_REGIONS - 1][MAX_CHAR_PER_REGION];
 
 const XPoint point1 = { WIDTH / 3, 0 };
 const XPoint point2 = { 2*(WIDTH / 3), 0 };
@@ -274,10 +272,7 @@ int read_config(char *config_path)
 							config_setting_get_string_elem(line, j));
 					exit(3);
 				}
-				if (key >= 0x01000100)
-					custom_charset[i][j] = key & 0xffffff;
-				else
-					custom_charset[i][j] = key;
+				custom_charset[i][j] = key & 0xffffff;
 			}
 			for (; j < MAX_CHAR_PER_REGION; j++) {
 				custom_charset[i][j] = '\0';
@@ -293,12 +288,33 @@ int read_config(char *config_path)
 }
 #endif
 
+int send_key_event(Display *dpy, Window client, KeyCode code, unsigned int state){
+	XKeyEvent event;
+
+	event.window = client;
+	event.root = DefaultRootWindow(dpy);
+	event.subwindow = None;
+	event.state = state;
+	event.keycode = code;
+	event.type = KeyPress;
+	event.time = CurrentTime;
+	XSendEvent(dpy, InputFocus, False, NoEventMask, (XEvent *)&event);
+	event.type = KeyRelease;
+	event.time = CurrentTime;
+	XSendEvent(dpy, InputFocus, False, NoEventMask, (XEvent *)&event);
+	XSync(dpy, False);
+
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
 	Display *dpy;
 	char *display_name;
-	Window toplevel, global_window;
+	Window toplevel, global_window, client;
+	int focus_state;
 	XSetWindowAttributes attributes;
+	XWMHints *wm_hints;
 
 	char *font_name = NULL;
 	XFontStruct *font_info;
@@ -318,13 +334,6 @@ int main(int argc, char **argv)
 	int invalid_gesture = 0;
 	int shift_modifier = 1;
 	Time last_cross_timestamp = 0L;
-
-	GtkWidget *gtk_text;
-	GtkTextBuffer *text;
-	GtkTextIter end, start;
-#ifdef TEXT_VIEW
-	GtkWidget *gtk_window;
-#endif
 
 	options = getopt(argc, argv, "f:c:");
 
@@ -371,21 +380,6 @@ int main(int argc, char **argv)
 	}
 #endif
 
-	gtk_init(NULL, NULL);
-	gtk_text = gtk_text_view_new ();
-	text = gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtk_text));
-
-#ifdef TEXT_VIEW
-	gtk_window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
-	gtk_window_set_default_size(GTK_WINDOW(gtk_window), 200, 100);
-	gtk_container_add(GTK_CONTAINER (gtk_window), gtk_text);
-	gtk_widget_show(gtk_text);
-	gtk_widget_show(gtk_window);
-#endif
-
-	while (gtk_events_pending())
-		gtk_main_iteration();
-
 	XShapeQueryVersion(dpy, &shape_ext_major, &shape_ext_minor);
 
 	unsigned long blackColor = BlackPixel(dpy, DefaultScreen(dpy));
@@ -411,6 +405,16 @@ int main(int argc, char **argv)
 	init_regions(dpy, toplevel);
 	XMapWindow(dpy, toplevel);
 	XMapWindow(dpy, global_window);
+
+	wm_hints = XAllocWMHints();
+
+	if (wm_hints) {
+		wm_hints->input = False;
+		wm_hints->flags = InputHint;
+		XSetWMHints(dpy, global_window, wm_hints);
+		XSetWMHints(dpy, toplevel, wm_hints);
+		XFree(wm_hints);
+	}
 
 	XSelectInput(dpy, toplevel, ExposureMask | ButtonPress);
 
@@ -446,6 +450,8 @@ int main(int argc, char **argv)
 		XEvent e;
 		char *region_name;
 
+		XGetInputFocus(dpy, &client, &focus_state);
+
 		XNextEvent(dpy, &e);
 		switch (e.type) {
 			case Expose:
@@ -462,27 +468,28 @@ int main(int argc, char **argv)
 				XFetchName(dpy, e.xcrossing.window, &region_name);
 				char region = region_name[0] - 48;
 				XFree(region_name);
-				char c[4];
-				gint size;
+				KeyCode code;
+				char c = '\0';
 
 				if (invalid_gesture) {
 					if (region == 0) {
 						invalid_gesture = 0;
 						buffer_count = 0;
-					}
-					else if (buffer_count == QUIT_GESTURE) {
-						run = 0;
+					} else if (buffer_count == QUIT_GESTURE) {
+					run = 0;
 					} else if (buffer_count > QUIT_GESTURE) {
 						buffer_count = 0;
 					}
 					buffer_count += 1;
 					break;
 				}
+
 				if (buffer_count > MAX_GESTURES_BUFFER) {
 					buffer_count += 1;
 					invalid_gesture = 1;
 					break;
 				}
+
 				if (region == 0) {
 					if (buffer_count == 0) {
 						break;
@@ -490,44 +497,46 @@ int main(int argc, char **argv)
 
 					if ((buffer[0] == buffer[buffer_count - 1]) && loaded_config && (buffer_count > 1)) {
 						buffer_count = (buffer_count - 1) >> 1;
-						wchar_t *index;
+						KeySym index;
+
 						if (DIRECTION(buffer[0], buffer[1]))
-							index = &(custom_charset[buffer[0] - 1][(buffer_count << 1) - 1]);
+							index = custom_charset[buffer[0] - 1][(buffer_count << 1) - 1];
 						else
-							index = &(custom_charset[buffer[0] - 1][(buffer_count  << 1 ) - 2]);
-						if (!shift_modifier)
-							size = g_unichar_to_utf8(*index, c);
-						else {
+							index = custom_charset[buffer[0] - 1][(buffer_count  << 1 ) - 2];
+
+						if (shift_modifier) {
 							KeySym lower, upper;
-							XConvertCase(*index, &lower, &upper);
-							size = g_unichar_to_utf8(upper, c);
+							XConvertCase(index, &lower, &upper);
+							code = XKeysymToKeycode(dpy, upper);
+						} else {
+							code = XKeysymToKeycode(dpy, index);
 						}
 					} else {
-						c[0] = g_utf8_get_char(&(charset[buffer[0] - 1][buffer[buffer_count - 1] - 1]));
-						size = 1;
+						c = charset[buffer[0] - 1][buffer[buffer_count - 1] - 1];
+							// X11 KeySym maps ASCII table
+						code = XKeysymToKeycode(dpy, c);
 					}
 
-					if (c[0] == '<') {
+					if (c == '<') {
 						if (e.xcrossing.time - last_cross_timestamp > LONG_EXPOSURE_DELAY) {
-							gtk_text_buffer_get_bounds(text, &start, &end);
-							gtk_text_buffer_delete(text, &start, &end);
+								// Erase all buffer
 						} else {
 							if (buffer_count == 1) {
-								gtk_text_buffer_get_iter_at_offset(text, &end, -1);
-								start = end;
-								gtk_text_iter_backward_char(&end);
-								gtk_text_buffer_delete(text, &start, &end);
+							char string[] = "BackSpace";
+							code = XKeysymToKeycode(dpy, XStringToKeysym(string));
 							}
 						}
-					} else if (c[0] == '>') {
+						send_key_event(dpy, client, code, 0);
+					} else if (c == '>') {
 						if (buffer_count == 1) {
-							char ch;
 							if (e.xcrossing.time - last_cross_timestamp > LONG_EXPOSURE_DELAY) {
-								ch = '\n';
+								char key_name[] = "Return";
+								code = XKeysymToKeycode(dpy, XStringToKeysym(key_name));
 							} else {
-								ch = ' ';
+								char key_name[] = "space";
+								code = XKeysymToKeycode(dpy, XStringToKeysym(key_name));
 							}
-							gtk_text_buffer_insert_at_cursor(text, &ch , 1);
+							send_key_event(dpy, client, code, 0);
 						} else if (shift_modifier) {
 							shift_modifier = 0;
 						} else if (buffer_count == 3) {
@@ -535,6 +544,7 @@ int main(int argc, char **argv)
 						} else if (buffer_count == 4) {
 							shift_modifier = 2;
 						}
+
 						if (buffer_count != 1) {
 							XClearWindow(dpy, toplevel);
 							draw_grid(dpy, toplevel, gc);
@@ -544,8 +554,10 @@ int main(int argc, char **argv)
 							break;
 						}
 					} else {
-						if ((shift_modifier) && (size == 1))
-								*c = toupper(*c);
+						if ((shift_modifier) && (c != '\0'))
+							send_key_event(dpy, client, code, ShiftMask);
+						else
+							send_key_event(dpy, client, code, 0);
 						if (shift_modifier == 1) {
 							shift_modifier = 0;
 							XClearWindow(dpy, toplevel);
@@ -553,11 +565,8 @@ int main(int argc, char **argv)
 							display_charset(dpy, toplevel, gc, font_info, shift_modifier);
 							XSync(dpy, False);
 						}
-						gtk_text_buffer_insert_at_cursor(text, c, size);
 					}
 
-					while (gtk_events_pending())
-						gtk_main_iteration();
 					buffer_count = 0;
 					break;
 				}
@@ -573,9 +582,6 @@ int main(int argc, char **argv)
 			}
 	}
 
-	gtk_text_buffer_get_bounds(text, &start, &end);
-	fprintf(stdout, "%s\n", (char *)gtk_text_buffer_get_text(text, &start, &end, FALSE));
-	//gtk_exit(0);
 	XFreeFont(dpy, font_info);
 	XFreeGC(dpy, gc);
 	XDestroyWindow(dpy, toplevel);
@@ -583,3 +589,4 @@ int main(int argc, char **argv)
 
 	exit(0);
 }
+
