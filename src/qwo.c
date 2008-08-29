@@ -315,6 +315,7 @@ int main(int argc, char **argv)
 	int focus_state;
 	XSetWindowAttributes attributes;
 	XWMHints *wm_hints;
+	Atom wmDeleteMessage;
 
 	char *font_name = NULL;
 	XFontStruct *font_info;
@@ -415,6 +416,9 @@ int main(int argc, char **argv)
 		XSetWMHints(dpy, toplevel, wm_hints);
 		XFree(wm_hints);
 	}
+
+	wmDeleteMessage = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
+	XSetWMProtocols(dpy, global_window, &wmDeleteMessage, 1);
 
 	XSelectInput(dpy, toplevel, ExposureMask | ButtonPress);
 
@@ -582,6 +586,10 @@ int main(int argc, char **argv)
 				}
 				buffer[buffer_count] = region;
 				buffer_count++;
+				break;
+			case ClientMessage:
+				if (e.xclient.data.l[0] == wmDeleteMessage)
+					run = 0;
 				break;
 			default:
 				printf("Received event %i\n", e.type);
