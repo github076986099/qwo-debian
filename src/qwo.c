@@ -374,7 +374,7 @@ int main(int argc, char **argv)
 	} else {
 		char config_path[MAX_CONFIG_PATH];
 		char *home_dir = getenv("HOME");
-		strncat(config_path, home_dir, MAX_CONFIG_PATH);
+		strncpy(config_path, home_dir, MAX_CONFIG_PATH);
 		strncat(config_path + strlen(home_dir), CONFIG_FILE,
 				MAX_CONFIG_PATH - strlen(home_dir));
 		loaded_config = read_config(config_path);
