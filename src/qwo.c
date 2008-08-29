@@ -469,6 +469,7 @@ int main(int argc, char **argv)
 				char region = region_name[0] - 48;
 				XFree(region_name);
 				KeyCode code;
+				int state_mod = 0;
 				char c = '\0';
 
 				if (invalid_gesture) {
@@ -515,6 +516,11 @@ int main(int argc, char **argv)
 						c = charset[buffer[0] - 1][buffer[buffer_count - 1] - 1];
 							// X11 KeySym maps ASCII table
 						code = XKeysymToKeycode(dpy, c);
+						for (state_mod = 0; state_mod < 4; state_mod++) {
+							if (XKeycodeToKeysym(dpy, code, state_mod) == (KeySym) c) {
+								break;
+							}
+						}
 					}
 
 					if (c == '<') {
@@ -554,8 +560,8 @@ int main(int argc, char **argv)
 							break;
 						}
 					} else {
-						if ((shift_modifier) && (c != '\0'))
-							send_key_event(dpy, client, code, ShiftMask);
+						if ((shift_modifier && isalpha(c)) || state_mod)
+							send_key_event(dpy, client, code, (shift_modifier & 1) | state_mod);
 						else
 							send_key_event(dpy, client, code, 0);
 						if (shift_modifier == 1) {
