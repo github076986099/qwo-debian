@@ -14,6 +14,8 @@ AC_CHECK_LIB(X11, XOpenDisplay)
 
 AC_CHECK_LIB(Xext, XShapeQueryExtension)
 
+AC_CHECK_LIB(Xtst, XTestFakeKeyEvent)
+
 AC_CHECK_LIB(config, config_read)
 
 AC_OUTPUT([

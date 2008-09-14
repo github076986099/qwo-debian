@@ -28,7 +28,10 @@
 #include <ctype.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <X11/Xatom.h>
+
 #include <X11/extensions/shape.h>
+#include <X11/extensions/XTest.h>
 
 #include <X11/keysym.h>
 #include <locale.h>
@@ -37,8 +40,8 @@
 #include <libconfig.h>
 #endif
 
-#define WIDTH   300
-#define HEIGHT  300
+#define WIDTH   480
+#define HEIGHT  400
 
 #define MAX_REGIONS 9
 #define MAX_POINTS  9
@@ -88,7 +91,7 @@ const XPoint point3 = { WIDTH, (HEIGHT / 3) };
 const XPoint point4 = { WIDTH, 2*(HEIGHT / 3) };
 const XPoint point5 = { 2*(WIDTH / 3), HEIGHT };
 const XPoint point6 = { (WIDTH / 3), HEIGHT };
-const XPoint point7 = { 0, 2*(WIDTH / 3) };
+const XPoint point7 = { 0, 2*(HEIGHT/ 3) };
 const XPoint point8 = { 0, (HEIGHT / 3) };
 const XPoint point9 = { (WIDTH / 3) + DELTA, (HEIGHT / 3 - DELTA) };
 const XPoint point10 = { 2*(WIDTH / 3) - DELTA, (HEIGHT / 3) - DELTA };
@@ -107,6 +110,16 @@ const XPoint point_ne = { 0, 0};
 const XPoint point_nw = { WIDTH, 0};
 const XPoint point_sw = { WIDTH, HEIGHT};
 const XPoint point_se = { 0, HEIGHT};
+
+typedef enum {
+	KeyboardNone = 0,
+	KeyboardShow,
+	KeyboardHide,
+	KeyboardToggle
+} KeyboardOperation;
+
+static Atom wmDeleteMessage, mtp_im_invoker_command,mb_im_invoker_command,
+		net_wm_state_skip_taskbar, net_wm_state_skip_pager, net_wm_state;
 
 void init_regions(Display *dpy, Window toplevel)
 {
@@ -144,8 +157,7 @@ void init_regions(Display *dpy, Window toplevel)
 		XStoreName(dpy, region_window, window_name);
 		XShapeCombineRegion(dpy, region_window, ShapeBounding, 0, 0,
 				region, ShapeSet);
-		XSelectInput(dpy, region_window, EnterWindowMask |
-				LeaveWindowMask);
+		XSelectInput(dpy, region_window, EnterWindowMask | LeaveWindowMask | ButtonPressMask);
 		XMapWindow(dpy, region_window);
 	}
 }
@@ -288,34 +300,53 @@ int read_config(char *config_path)
 }
 #endif
 
-int send_key_event(Display *dpy, Window client, KeyCode code, unsigned int state){
-	XKeyEvent event;
+int set_window_properties(Display *dpy, Window toplevel){
+	XWMHints *wm_hints;
+	XSizeHints	size_hints;
 
-	event.window = client;
-	event.root = DefaultRootWindow(dpy);
-	event.subwindow = None;
-	event.state = state;
-	event.keycode = code;
-	event.type = KeyPress;
-	event.time = CurrentTime;
-	XSendEvent(dpy, InputFocus, False, NoEventMask, (XEvent *)&event);
-	event.type = KeyRelease;
-	event.time = CurrentTime;
-	XSendEvent(dpy, InputFocus, False, NoEventMask, (XEvent *)&event);
-	XSync(dpy, False);
+	wm_hints = XAllocWMHints();
+
+	if (wm_hints) {
+		wm_hints->input = False;
+		wm_hints->flags = InputHint;
+		XSetWMHints(dpy, toplevel, wm_hints);
+		XFree(wm_hints);
+	}
+
+	size_hints.flags = PPosition | PSize;
+	size_hints.x = 0;
+	size_hints.y = 0;
+	size_hints.width = WIDTH;
+	size_hints.height = HEIGHT;
+
+	XSetStandardProperties(dpy, toplevel, "Keyboard", NULL, 0, NULL, 0,
+			&size_hints);
+
+	wmDeleteMessage = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
+	mtp_im_invoker_command = XInternAtom(dpy, "_MTP_IM_INVOKER_COMMAND", False);
+	mb_im_invoker_command = XInternAtom(dpy, "_MB_IM_INVOKER_COMMAND", False);
+	XSetWMProtocols(dpy, toplevel, &wmDeleteMessage, 1);
+
+	net_wm_state_skip_pager = XInternAtom(dpy, "_NET_WM_STATE_SKIP_PAGER", False);
+	net_wm_state_skip_taskbar = XInternAtom(dpy, "_NET_WM_STATE_SKIP_TASKBAR", False);
+	net_wm_state = XInternAtom (dpy, "_NET_WM_STATE", False);
+
+	XChangeProperty (dpy, toplevel, net_wm_state, XA_ATOM, 32, PropModeAppend,
+			(unsigned char *)&net_wm_state_skip_taskbar, 1);
+	XChangeProperty (dpy, toplevel, net_wm_state, XA_ATOM, 32, PropModeAppend,
+			(unsigned char *)&net_wm_state_skip_pager, 1);
 
 	return 0;
 }
+
 
 int main(int argc, char **argv)
 {
 	Display *dpy;
 	char *display_name;
-	Window toplevel, global_window, client;
-	int focus_state;
+	Window toplevel;
 	XSetWindowAttributes attributes;
-	XWMHints *wm_hints;
-	Atom wmDeleteMessage;
+
 
 	char *font_name = NULL;
 	XFontStruct *font_info;
@@ -328,13 +359,15 @@ int main(int argc, char **argv)
 
 	char *config_path = NULL;
 	int loaded_config = 0;
-	int run = 0;
+	int run = 1;
 	int options;
+	int visible = 0;
 	int buffer[MAX_GESTURES_BUFFER];
 	int buffer_count = 0;
 	int invalid_gesture = 0;
 	int shift_modifier = 1;
 	Time last_cross_timestamp = 0L;
+
 
 	options = getopt(argc, argv, "f:c:");
 
@@ -387,14 +420,11 @@ int main(int argc, char **argv)
 	unsigned long whiteColor = WhitePixel(dpy, DefaultScreen(dpy));
 
 	attributes.background_pixel = whiteColor;
+	attributes.override_redirect = False;
 	valuemask = CWBackPixel;
 
-	global_window = XCreateWindow(dpy, DefaultRootWindow(dpy), 0, 0,
-			WIDTH, HEIGHT, 0, CopyFromParent,
-			InputOutput, CopyFromParent, valuemask, &attributes);
-
-	toplevel = XCreateWindow(dpy, global_window, 0, 0,
-			WIDTH, HEIGHT, 0, CopyFromParent, InputOutput,
+	toplevel = XCreateWindow(dpy, DefaultRootWindow(dpy), 0, 0,
+			WIDTH, HEIGHT, 0, CopyFromParent, CopyFromParent,
 			CopyFromParent, valuemask, &attributes);
 
 	xgc.foreground = blackColor;
@@ -404,23 +434,12 @@ int main(int argc, char **argv)
 	gc = XCreateGC(dpy, toplevel, valuemask, &xgc);
 
 	init_regions(dpy, toplevel);
+
+	set_window_properties(dpy, toplevel);
+
+	XSelectInput(dpy, toplevel, SubstructureNotifyMask | StructureNotifyMask);
+
 	XMapWindow(dpy, toplevel);
-	XMapWindow(dpy, global_window);
-
-	wm_hints = XAllocWMHints();
-
-	if (wm_hints) {
-		wm_hints->input = False;
-		wm_hints->flags = InputHint;
-		XSetWMHints(dpy, global_window, wm_hints);
-		XSetWMHints(dpy, toplevel, wm_hints);
-		XFree(wm_hints);
-	}
-
-	wmDeleteMessage = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
-	XSetWMProtocols(dpy, global_window, &wmDeleteMessage, 1);
-
-	XSelectInput(dpy, toplevel, ExposureMask | ButtonPress);
 
 	if(!(load_font(dpy, &font_info, font_name))) {
 		XDestroyWindow(dpy, toplevel);
@@ -434,48 +453,31 @@ int main(int argc, char **argv)
 	display_charset(dpy, toplevel, gc, font_info, shift_modifier);
 	XSync(dpy, False);
 
-	while(!run) {
-		XEvent e;
-		char *region_name;
-
-		XNextEvent(dpy, &e);
-		switch (e.type) {
-			case EnterNotify:
-				if (XFetchName(dpy, e.xcrossing.window, &region_name)) {
-					char region = region_name[0] - 48;
-					if (region == 0)
-						run = 1;
-					XFree(region_name);
-				}
-		}
-	}
-
 	while(run) {
 		XEvent e;
 		char *region_name;
-
-		XGetInputFocus(dpy, &client, &focus_state);
+		int region;
 
 		XNextEvent(dpy, &e);
 		switch (e.type) {
-			case Expose:
-				draw_grid(dpy, toplevel, gc);
-				display_charset(dpy, toplevel, gc, font_info, shift_modifier);
-				XSync(dpy, False);
-				break;
 			case ButtonPress:
+				XFetchName(dpy, e.xbutton.window, &region_name);
+				region = region_name[0] - 48;
+				XFree(region_name);
 				break;
 			case LeaveNotify:
-				//XFetchName(dpy, e.xcrossing.window, &region_name);
+				XFetchName(dpy, e.xcrossing.window, &region_name);
+				region = region_name[0] - 48;
+				XFree(region_name);
 				break;
 			case EnterNotify:
 				XFetchName(dpy, e.xcrossing.window, &region_name);
-				char region = region_name[0] - 48;
+				region = region_name[0] - 48;
 				XFree(region_name);
 				KeyCode code;
+
 				int state_mod = 0;
 				char c = '\0';
-
 				if (invalid_gesture) {
 					if (region == 0) {
 						invalid_gesture = 0;
@@ -536,7 +538,7 @@ int main(int argc, char **argv)
 							code = XKeysymToKeycode(dpy, XStringToKeysym(string));
 							}
 						}
-						send_key_event(dpy, client, code, 0);
+						XTestFakeKeyEvent(dpy, code, True, 0);
 					} else if (c == '>') {
 						if (buffer_count == 1) {
 							if (e.xcrossing.time - last_cross_timestamp > LONG_EXPOSURE_DELAY) {
@@ -546,7 +548,7 @@ int main(int argc, char **argv)
 								char key_name[] = "space";
 								code = XKeysymToKeycode(dpy, XStringToKeysym(key_name));
 							}
-							send_key_event(dpy, client, code, 0);
+							XTestFakeKeyEvent(dpy, code, True, 0);
 						} else if (shift_modifier) {
 							shift_modifier = 0;
 						} else if (buffer_count == 3) {
@@ -565,9 +567,9 @@ int main(int argc, char **argv)
 						}
 					} else {
 						if ((shift_modifier && isalpha(c)) || state_mod)
-							send_key_event(dpy, client, code, (shift_modifier & 1) | state_mod);
+							XTestFakeKeyEvent(dpy, code, True, 0);
 						else
-							send_key_event(dpy, client, code, 0);
+							XTestFakeKeyEvent(dpy, code, True, 0);
 						if (shift_modifier == 1) {
 							shift_modifier = 0;
 							XClearWindow(dpy, toplevel);
@@ -587,7 +589,39 @@ int main(int argc, char **argv)
 				buffer[buffer_count] = region;
 				buffer_count++;
 				break;
+			case ConfigureNotify:
+				XMapWindow(dpy, toplevel);
+				draw_grid(dpy, toplevel, gc);
+				display_charset(dpy, toplevel, gc, font_info, shift_modifier);
+				XSync(dpy, False);
 			case ClientMessage:
+				if ((e.xclient.message_type == mb_im_invoker_command) ||
+					(e.xclient.message_type == mtp_im_invoker_command)) {
+					if (e.xclient.data.l[0] == KeyboardShow) {
+						XMapWindow(dpy, toplevel);
+						draw_grid(dpy, toplevel, gc);
+						display_charset(dpy, toplevel, gc, font_info, shift_modifier);
+						XSync(dpy, False);
+					}
+					if (e.xclient.data.l[0] == KeyboardHide) {
+						XUnmapWindow(dpy, toplevel);
+						XSync(dpy, False);
+					}
+					if (e.xclient.data.l[0] == KeyboardToggle) {
+						if (visible) {
+							XUnmapWindow(dpy, toplevel);
+							XSync(dpy, False);
+							visible = 0;
+						} else {
+							XMapWindow(dpy, toplevel);
+							draw_grid(dpy, toplevel, gc);
+							display_charset(dpy, toplevel, gc, font_info, shift_modifier);
+							XSync(dpy, False);
+							visible = 1;
+						}
+					}
+					break;
+				}
 				if (e.xclient.data.l[0] == wmDeleteMessage)
 					run = 0;
 				break;

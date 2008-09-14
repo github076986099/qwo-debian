@@ -6,6 +6,6 @@ Version=0.1
 Type=Application
 Exec=qwo
 Terminal=false
-Categories=Utilities;Applications;TextTools
+Categories=Utilities;Keyboard
 X-MB-SingleInstance=true
 Icon=qwo
