@@ -124,15 +124,9 @@ static Atom wmDeleteMessage, mtp_im_invoker_command,mb_im_invoker_command,
 void init_regions(Display *dpy, Window toplevel)
 {
 	Window region_window;
-	XSetWindowAttributes attributes;
 	Region region;
 	char window_name[2];
 	int number;
-	unsigned long valuemask;
-
-	attributes.background_pixel = WhitePixel(dpy, DefaultScreen(dpy));
-	attributes.border_pixel = BlackPixel(dpy, DefaultScreen(dpy));
-	valuemask = CWBorderPixel | CWBackPixel;
 
 	XPoint regions[MAX_REGIONS][MAX_POINTS] = {
 		FILL_REGION8(point9, point10, point11, point12, point13,
