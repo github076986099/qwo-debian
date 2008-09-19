@@ -59,7 +59,6 @@
 #define MAX_CHAR_PER_REGION		 5
 
 #define MAX_GESTURES_BUFFER      6
-#define QUIT_GESTURE			 8
 
 #define LONG_EXPOSURE_DELAY		2000L
 
@@ -93,7 +92,7 @@ const XPoint point5 = { 2*(WIDTH / 3), HEIGHT };
 const XPoint point6 = { (WIDTH / 3), HEIGHT };
 const XPoint point7 = { 0, 2*(HEIGHT/ 3) };
 const XPoint point8 = { 0, (HEIGHT / 3) };
-const XPoint point9 = { (WIDTH / 3) + DELTA, (HEIGHT / 3 - DELTA) };
+const XPoint point9 = { (WIDTH / 3) + DELTA, (HEIGHT / 3) - DELTA };
 const XPoint point10 = { 2*(WIDTH / 3) - DELTA, (HEIGHT / 3) - DELTA };
 const XPoint point11 =  { 2*(WIDTH / 3) + DELTA, (HEIGHT / 3) + DELTA };
 const XPoint point12 = { 2*(WIDTH / 3) + DELTA, 2*(HEIGHT / 3) - DELTA };
@@ -358,7 +357,6 @@ int main(int argc, char **argv)
 	int visible = 0;
 	int buffer[MAX_GESTURES_BUFFER];
 	int buffer_count = 0;
-	int invalid_gesture = 0;
 	int shift_modifier = 1;
 	Time last_cross_timestamp = 0L;
 
@@ -472,24 +470,6 @@ int main(int argc, char **argv)
 
 				int state_mod = 0;
 				char c = '\0';
-				if (invalid_gesture) {
-					if (region == 0) {
-						invalid_gesture = 0;
-						buffer_count = 0;
-					} else if (buffer_count == QUIT_GESTURE) {
-					run = 0;
-					} else if (buffer_count > QUIT_GESTURE) {
-						buffer_count = 0;
-					}
-					buffer_count += 1;
-					break;
-				}
-
-				if (buffer_count > MAX_GESTURES_BUFFER) {
-					buffer_count += 1;
-					invalid_gesture = 1;
-					break;
-				}
 
 				if (region == 0) {
 					if (buffer_count == 0) {
