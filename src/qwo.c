@@ -126,6 +126,14 @@ void init_regions(Display *dpy, Window toplevel)
 	Region region;
 	char window_name[2];
 	int number;
+	XWMHints *wm_hints;
+
+	wm_hints = XAllocWMHints();
+
+	if (wm_hints) {
+		wm_hints->input = False;
+		wm_hints->flags = InputHint;
+	}
 
 	XPoint regions[MAX_REGIONS][MAX_POINTS] = {
 		FILL_REGION8(point9, point10, point11, point12, point13,
@@ -150,9 +158,11 @@ void init_regions(Display *dpy, Window toplevel)
 		XStoreName(dpy, region_window, window_name);
 		XShapeCombineRegion(dpy, region_window, ShapeBounding, 0, 0,
 				region, ShapeSet);
-		XSelectInput(dpy, region_window, EnterWindowMask | LeaveWindowMask | ButtonPressMask);
+		XSetWMHints(dpy, region_window, wm_hints);
+		XSelectInput(dpy, region_window, EnterWindowMask | LeaveWindowMask | ButtonPressMask | ButtonReleaseMask);
 		XMapWindow(dpy, region_window);
 	}
+	XFree(wm_hints);
 }
 
 int load_font(Display *dpy, XFontStruct **font_info, char *font)
@@ -294,8 +304,8 @@ int read_config(char *config_path)
 #endif
 
 int set_window_properties(Display *dpy, Window toplevel){
-	XWMHints *wm_hints;
 	XSizeHints	size_hints;
+	XWMHints *wm_hints;
 
 	wm_hints = XAllocWMHints();
 
@@ -339,7 +349,6 @@ int main(int argc, char **argv)
 	char *display_name;
 	Window toplevel;
 	XSetWindowAttributes attributes;
-
 
 	char *font_name = NULL;
 	XFontStruct *font_info;
@@ -412,7 +421,7 @@ int main(int argc, char **argv)
 	unsigned long whiteColor = WhitePixel(dpy, DefaultScreen(dpy));
 
 	attributes.background_pixel = whiteColor;
-	attributes.override_redirect = False;
+	attributes.override_redirect = True;
 	valuemask = CWBackPixel;
 
 	toplevel = XCreateWindow(dpy, DefaultRootWindow(dpy), 0, 0,
