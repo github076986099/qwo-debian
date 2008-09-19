@@ -518,8 +518,7 @@ int main(int argc, char **argv)
 								// Erase all buffer
 						} else {
 							if (buffer_count == 1) {
-							char string[] = "BackSpace";
-							code = XKeysymToKeycode(dpy, XStringToKeysym(string));
+							code = XKeysymToKeycode(dpy, XK_BackSpace);
 							}
 						}
 						XTestFakeKeyEvent(dpy, code, True, 0);
@@ -527,11 +526,9 @@ int main(int argc, char **argv)
 					} else if (c == '>') {
 						if (buffer_count == 1) {
 							if (e.xcrossing.time - last_cross_timestamp > LONG_EXPOSURE_DELAY) {
-								char key_name[] = "Return";
-								code = XKeysymToKeycode(dpy, XStringToKeysym(key_name));
+								code = XKeysymToKeycode(dpy, XK_Return);
 							} else {
-								char key_name[] = "space";
-								code = XKeysymToKeycode(dpy, XStringToKeysym(key_name));
+								code = XKeysymToKeycode(dpy, XK_space);
 							}
 							XTestFakeKeyEvent(dpy, code, True, 0);
 							XTestFakeKeyEvent(dpy, code, False, 0);
@@ -553,8 +550,10 @@ int main(int argc, char **argv)
 						}
 					} else {
 						if ((shift_modifier && isalpha(c)) || state_mod) {
+							XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, XK_Shift_L), True, 0);
 							XTestFakeKeyEvent(dpy, code, True, 0);
 							XTestFakeKeyEvent(dpy, code, False, 0);
+							XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, XK_Shift_L), False, 0);
 						} else {
 							XTestFakeKeyEvent(dpy, code, True, 0);
 							XTestFakeKeyEvent(dpy, code, False, 0);
