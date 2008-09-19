@@ -465,6 +465,7 @@ int main(int argc, char **argv)
 				XFetchName(dpy, e.xbutton.window, &region_name);
 				region = region_name[0] - 48;
 				XFree(region_name);
+				XUngrabPointer(dpy, CurrentTime);
 				break;
 			case LeaveNotify:
 				XFetchName(dpy, e.xcrossing.window, &region_name);
