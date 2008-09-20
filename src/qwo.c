@@ -40,7 +40,7 @@
 #include <libconfig.h>
 #endif
 
-#define WIDTH   480
+#define WIDTH   400
 #define HEIGHT  400
 
 #define MAX_REGIONS 9
@@ -368,6 +368,7 @@ int main(int argc, char **argv)
 	int buffer_count = 0;
 	int shift_modifier = 1;
 	Time last_cross_timestamp = 0L;
+	Time last_pressed = 0L;
 
 
 	options = getopt(argc, argv, "f:c:");
@@ -466,9 +467,10 @@ int main(int argc, char **argv)
 				region = region_name[0] - 48;
 				XFree(region_name);
 				XUngrabPointer(dpy, CurrentTime);
+				last_pressed = e.xbutton.time;
 				break;
-			case LeaveNotify:
-				XFetchName(dpy, e.xcrossing.window, &region_name);
+			case ButtonRelease:
+				XFetchName(dpy, e.xbutton.window, &region_name);
 				region = region_name[0] - 48;
 				XFree(region_name);
 				break;
@@ -481,19 +483,16 @@ int main(int argc, char **argv)
 				int state_mod = 0;
 				char c = '\0';
 
-				if (region == 0) {
-					if (buffer_count == 0) {
-						break;
-					}
+				if ((region == 0) && buffer_count > 1){
 
-					if ((buffer[0] == buffer[buffer_count - 1]) && loaded_config && (buffer_count > 1)) {
+					if ((buffer[1] == buffer[buffer_count - 1]) && loaded_config && (buffer_count > 2)) {
 						buffer_count = (buffer_count - 1) >> 1;
 						KeySym index;
 
-						if (DIRECTION(buffer[0], buffer[1]))
-							index = custom_charset[buffer[0] - 1][(buffer_count << 1) - 1];
+						if (DIRECTION(buffer[1], buffer[2]))
+							index = custom_charset[buffer[1] - 1][(buffer_count << 1) - 1];
 						else
-							index = custom_charset[buffer[0] - 1][(buffer_count  << 1 ) - 2];
+							index = custom_charset[buffer[1] - 1][(buffer_count << 1) - 2];
 
 						if (shift_modifier) {
 							KeySym lower, upper;
@@ -503,7 +502,7 @@ int main(int argc, char **argv)
 							code = XKeysymToKeycode(dpy, index);
 						}
 					} else {
-						c = charset[buffer[0] - 1][buffer[buffer_count - 1] - 1];
+						c = charset[buffer[1] - 1][buffer[buffer_count - 1] - 1];
 							// X11 KeySym maps ASCII table
 						code = XKeysymToKeycode(dpy, c);
 						for (state_mod = 0; state_mod < 4; state_mod++) {
@@ -517,14 +516,14 @@ int main(int argc, char **argv)
 						if (e.xcrossing.time - last_cross_timestamp > LONG_EXPOSURE_DELAY) {
 								// Erase all buffer
 						} else {
-							if (buffer_count == 1) {
+							if (buffer_count == 2) {
 							code = XKeysymToKeycode(dpy, XK_BackSpace);
 							}
 						}
 						XTestFakeKeyEvent(dpy, code, True, 0);
 						XTestFakeKeyEvent(dpy, code, False, 0);
 					} else if (c == '>') {
-						if (buffer_count == 1) {
+						if (buffer_count == 2) {
 							if (e.xcrossing.time - last_cross_timestamp > LONG_EXPOSURE_DELAY) {
 								code = XKeysymToKeycode(dpy, XK_Return);
 							} else {
@@ -534,18 +533,19 @@ int main(int argc, char **argv)
 							XTestFakeKeyEvent(dpy, code, False, 0);
 						} else if (shift_modifier) {
 							shift_modifier = 0;
-						} else if (buffer_count == 3) {
-							shift_modifier = 1;
 						} else if (buffer_count == 4) {
+							shift_modifier = 1;
+						} else if (buffer_count == 5) {
 							shift_modifier = 2;
 						}
 
-						if (buffer_count != 1) {
+						if (buffer_count != 2) {
 							XClearWindow(dpy, toplevel);
 							draw_grid(dpy, toplevel, gc);
 							display_charset(dpy, toplevel, gc, font_info, shift_modifier);
 							XSync(dpy, False);
-							buffer_count = 0;
+							buffer_count = 1;
+							buffer[0] = 0;
 							break;
 						}
 					} else {
@@ -567,15 +567,18 @@ int main(int argc, char **argv)
 						}
 					}
 
-					buffer_count = 0;
+					buffer_count = 1;
+					buffer[0] = 0;
 					break;
 				}
 
-				if(!buffer_count) {
+				if(buffer_count == 1) {
 					last_cross_timestamp = e.xcrossing.time;
 				}
-				buffer[buffer_count] = region;
-				buffer_count++;
+				if (!buffer_count || (buffer[buffer_count - 1] != region)) {
+					buffer[buffer_count] = region;
+					buffer_count++;
+				}
 				break;
 			case ConfigureNotify:
 				XMapWindow(dpy, toplevel);
