@@ -61,6 +61,7 @@
 #define MAX_GESTURES_BUFFER      6
 
 #define LONG_EXPOSURE_DELAY		2000L
+#define PRESS_DELAY				100L
 
 #define FILL_REGION4(a, b, c, d)        {a, b, c, d, a, a, a, a, a}
 #define FILL_REGION5(a, b, c, d, e)     {a, b, c, d, e, a, a, a, a}
@@ -81,6 +82,18 @@ char charset[][MAX_REGIONS] = {
 		"????.vuw",
 		"y?????x<"
 };
+
+KeySym char_free[MAX_REGIONS][MAX_REGIONS] = {
+	{XK_KP_5, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, XK_KP_0, 0xffff, 0xffff},
+	{0xffff, XK_KP_1, XK_Tab, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, XK_slash},
+	{0xffff, 0xffff, XK_KP_2, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff},
+	{0xffff, 0xffff, 0xffff, XK_KP_3, XK_backslash, 0xffff, 0xffff, 0xffff, 0xffff},
+	{0xffff, 0xffff, 0xffff, 0xffff, XK_KP_6, XK_Return, 0xffff, 0xffff, 0xffff},
+	{0xffff, 0xffff, 0xffff, 0xffff, 0xffff, XK_KP_9, 0xffff, 0xffff, 0xffff},
+	{0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, XK_KP_8, 0xffff, 0xffff},
+	{0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, XK_KP_7, 0xffff},
+	{0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, XK_Control_L, 0xffff, XK_KP_4}};
+
 
 KeySym custom_charset[MAX_REGIONS - 1][MAX_CHAR_PER_REGION];
 
@@ -366,7 +379,8 @@ int main(int argc, char **argv)
 	int visible = 0;
 	int buffer[MAX_GESTURES_BUFFER];
 	int buffer_count = 0;
-	int shift_modifier = 1;
+	int shift_modifier = 0;
+	int ctrl_modifier = 0;
 	Time last_cross_timestamp = 0L;
 	Time last_pressed = 0L;
 
@@ -459,6 +473,7 @@ int main(int argc, char **argv)
 		XEvent e;
 		char *region_name;
 		int region;
+		KeyCode code;
 
 		XNextEvent(dpy, &e);
 		switch (e.type) {
@@ -467,23 +482,32 @@ int main(int argc, char **argv)
 				region = region_name[0] - 48;
 				XFree(region_name);
 				XUngrabPointer(dpy, CurrentTime);
+				buffer[0] = region;
 				last_pressed = e.xbutton.time;
 				break;
 			case ButtonRelease:
 				XFetchName(dpy, e.xbutton.window, &region_name);
 				region = region_name[0] - 48;
 				XFree(region_name);
+				if (buffer[0] == 0 && !region && e.xbutton.time - last_pressed > PRESS_DELAY)
+					break;
+				if (char_free[buffer[0]][region] != XK_Control_L) {
+					code = XKeysymToKeycode(dpy, char_free[buffer[0]][region]);
+					XTestFakeKeyEvent(dpy, code, True, 0);
+					XTestFakeKeyEvent(dpy, code, False, 0);
+				} else
+					ctrl_modifier = 1;
+				buffer_count = 0;
 				break;
 			case EnterNotify:
 				XFetchName(dpy, e.xcrossing.window, &region_name);
 				region = region_name[0] - 48;
 				XFree(region_name);
-				KeyCode code;
 
 				int state_mod = 0;
 				char c = '\0';
 
-				if ((region == 0) && buffer_count > 1){
+				if ((region == 0) && buffer_count > 1 && buffer[0] == 0){
 
 					if ((buffer[1] == buffer[buffer_count - 1]) && loaded_config && (buffer_count > 2)) {
 						buffer_count = (buffer_count - 1) >> 1;
@@ -554,6 +578,12 @@ int main(int argc, char **argv)
 							XTestFakeKeyEvent(dpy, code, True, 0);
 							XTestFakeKeyEvent(dpy, code, False, 0);
 							XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, XK_Shift_L), False, 0);
+						} else if (ctrl_modifier) {
+							XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, XK_Control_L), True, 0);
+							XTestFakeKeyEvent(dpy, code, True, 0);
+							XTestFakeKeyEvent(dpy, code, False, 0);
+							XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, XK_Control_L), False, 0);
+							ctrl_modifier = 0;
 						} else {
 							XTestFakeKeyEvent(dpy, code, True, 0);
 							XTestFakeKeyEvent(dpy, code, False, 0);
