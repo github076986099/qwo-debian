@@ -1,3 +1,11 @@
+2008-09-21	Charles Clément <caratorn@gmail.com>
+
+	* 0.2 release
+	* Integrate into the Freeruner's window manager
+	* Handle gestures from any region
+	* Restore display after blank and suspend
+	* Transmit keys using XTestFakeKeyEvent
+
 	* Transmit keys using XKeyEvent on focused window
 	* Remove Gtk dependencies
 	* Add WM input method hints
