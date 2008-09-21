@@ -592,7 +592,7 @@ int main(int argc, char **argv)
 							buffer[0] = 0;
 							break;
 						}
-					} else {
+					} else if (code) {
 						if ((shift_modifier && isalpha(c)) || state_mod) {
 							XTestFakeKeyEvent(dpy, Shift_code, True, 0);
 							XTestFakeKeyEvent(dpy, code, True, 0);
