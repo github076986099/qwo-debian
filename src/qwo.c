@@ -462,7 +462,7 @@ int main(int argc, char **argv)
 
 	init_keycodes(dpy);
 
-	XSelectInput(dpy, toplevel, SubstructureNotifyMask | StructureNotifyMask);
+	XSelectInput(dpy, toplevel, SubstructureNotifyMask | StructureNotifyMask | ExposureMask);
 
 	XMapWindow(dpy, toplevel);
 
@@ -630,6 +630,7 @@ int main(int argc, char **argv)
 					buffer_count++;
 				}
 				break;
+			case Expose:
 			case ConfigureNotify:
 				XMapWindow(dpy, toplevel);
 				draw_grid(dpy, toplevel, gc);
