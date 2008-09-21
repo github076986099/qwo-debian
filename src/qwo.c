@@ -40,8 +40,8 @@
 #include <libconfig.h>
 #endif
 
-#define WIDTH   400
-#define HEIGHT  400
+#define WIDTH   300
+#define HEIGHT  WIDTH
 
 #define MAX_REGIONS 9
 #define MAX_POINTS  9
@@ -85,15 +85,16 @@ char charset[][MAX_REGIONS] = {
 
 KeySym char_free[MAX_REGIONS][MAX_REGIONS] = {
 	{XK_KP_5, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, XK_KP_0, 0xffff, 0xffff},
-	{0xffff, XK_KP_1, XK_Tab, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, XK_slash},
-	{0xffff, 0xffff, XK_KP_2, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff},
+	{0xffff, XK_KP_1, XK_Tab, XK_question, 0xffff, 0xffff, 0xffff, 0xffff, XK_slash},
+	{0xffff, 0xffff, XK_KP_2, XK_minus, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff},
 	{0xffff, 0xffff, 0xffff, XK_KP_3, XK_backslash, 0xffff, 0xffff, 0xffff, 0xffff},
 	{0xffff, 0xffff, 0xffff, 0xffff, XK_KP_6, XK_Return, 0xffff, 0xffff, 0xffff},
 	{0xffff, 0xffff, 0xffff, 0xffff, 0xffff, XK_KP_9, 0xffff, 0xffff, 0xffff},
-	{0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, XK_KP_8, 0xffff, 0xffff},
+	{0xffff, 0xffff, 0xffff, 0xffff, 0xffff, XK_underscore, XK_KP_8, 0xffff, 0xffff},
 	{0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, XK_KP_7, 0xffff},
 	{0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, XK_Control_L, 0xffff, XK_KP_4}};
 
+static KeyCode Shift_code, Control_code;
 
 KeySym custom_charset[MAX_REGIONS - 1][MAX_CHAR_PER_REGION];
 
@@ -355,6 +356,12 @@ int set_window_properties(Display *dpy, Window toplevel){
 	return 0;
 }
 
+int init_keycodes(Display *dpy){
+	Shift_code = XKeysymToKeycode(dpy, XK_Shift_L);
+	Control_code = XKeysymToKeycode(dpy, XK_Control_L);
+
+	return 0;
+}
 
 int main(int argc, char **argv)
 {
@@ -453,6 +460,8 @@ int main(int argc, char **argv)
 
 	set_window_properties(dpy, toplevel);
 
+	init_keycodes(dpy);
+
 	XSelectInput(dpy, toplevel, SubstructureNotifyMask | StructureNotifyMask);
 
 	XMapWindow(dpy, toplevel);
@@ -473,7 +482,9 @@ int main(int argc, char **argv)
 		XEvent e;
 		char *region_name;
 		int region;
+		int state_mod = 0;
 		KeyCode code;
+		KeySym ksym;
 
 		XNextEvent(dpy, &e);
 		switch (e.type) {
@@ -491,10 +502,20 @@ int main(int argc, char **argv)
 				XFree(region_name);
 				if (buffer[0] == 0 && !region && e.xbutton.time - last_pressed > PRESS_DELAY)
 					break;
-				if (char_free[buffer[0]][region] != XK_Control_L) {
-					code = XKeysymToKeycode(dpy, char_free[buffer[0]][region]);
+				ksym = char_free[buffer[0]][region];
+				if (ksym != XK_Control_L) {
+					code = XKeysymToKeycode(dpy, ksym);
+					for (state_mod = 0; state_mod < 4; state_mod++) {
+						if (XKeycodeToKeysym(dpy, code, state_mod) == ksym ) {
+							break;
+						}
+					}
+					if (state_mod)
+						XTestFakeKeyEvent(dpy, Shift_code, True, 0);
 					XTestFakeKeyEvent(dpy, code, True, 0);
 					XTestFakeKeyEvent(dpy, code, False, 0);
+					if (state_mod)
+						XTestFakeKeyEvent(dpy, Shift_code, False, 0);
 				} else
 					ctrl_modifier = 1;
 				buffer_count = 0;
@@ -504,7 +525,6 @@ int main(int argc, char **argv)
 				region = region_name[0] - 48;
 				XFree(region_name);
 
-				int state_mod = 0;
 				char c = '\0';
 
 				if ((region == 0) && buffer_count > 1 && buffer[0] == 0){
@@ -574,15 +594,15 @@ int main(int argc, char **argv)
 						}
 					} else {
 						if ((shift_modifier && isalpha(c)) || state_mod) {
-							XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, XK_Shift_L), True, 0);
+							XTestFakeKeyEvent(dpy, Shift_code, True, 0);
 							XTestFakeKeyEvent(dpy, code, True, 0);
 							XTestFakeKeyEvent(dpy, code, False, 0);
-							XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, XK_Shift_L), False, 0);
+							XTestFakeKeyEvent(dpy, Shift_code, False, 0);
 						} else if (ctrl_modifier) {
-							XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, XK_Control_L), True, 0);
+							XTestFakeKeyEvent(dpy, Control_code, True, 0);
 							XTestFakeKeyEvent(dpy, code, True, 0);
 							XTestFakeKeyEvent(dpy, code, False, 0);
-							XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, XK_Control_L), False, 0);
+							XTestFakeKeyEvent(dpy, Control_code, False, 0);
 							ctrl_modifier = 0;
 						} else {
 							XTestFakeKeyEvent(dpy, code, True, 0);
