@@ -84,7 +84,7 @@ char charset[][MAX_REGIONS] = {
 };
 
 KeySym char_free[MAX_REGIONS][MAX_REGIONS] = {
-	{XK_KP_5, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, XK_KP_0, 0xffff, 0xffff},
+	{XK_KP_5, 0xffff, XK_Up, 0xffff, XK_Right, 0xffff, XK_KP_0, 0xffff, XK_Left},
 	{0xffff, XK_KP_1, XK_Tab, XK_question, 0xffff, 0xffff, 0xffff, 0xffff, XK_slash},
 	{0xffff, 0xffff, XK_KP_2, XK_minus, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff},
 	{0xffff, 0xffff, 0xffff, XK_KP_3, XK_backslash, 0xffff, 0xffff, 0xffff, 0xffff},
@@ -92,7 +92,7 @@ KeySym char_free[MAX_REGIONS][MAX_REGIONS] = {
 	{0xffff, 0xffff, 0xffff, 0xffff, 0xffff, XK_KP_9, 0xffff, 0xffff, 0xffff},
 	{0xffff, 0xffff, 0xffff, 0xffff, 0xffff, XK_underscore, XK_KP_8, 0xffff, 0xffff},
 	{0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, XK_KP_7, 0xffff},
-	{0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, XK_Control_L, 0xffff, XK_KP_4}};
+	{0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, XK_Control_L, XK_Down, XK_KP_4}};
 
 static KeyCode Shift_code, Control_code;
 
@@ -200,7 +200,7 @@ void display_charset(Display *dpy, Window win, GC gc, XFontStruct *font_info, in
 
 	font_height = font_info->ascent + font_info->descent;
 	len = XTextWidth(font_info, &charset[0][0], 1);
-	offset = WIDTH / 8;
+	offset = WIDTH >> 3;
 
 	count = 0;
 	for (i = 0; i < 3; i++) {
@@ -443,7 +443,7 @@ int main(int argc, char **argv)
 	unsigned long whiteColor = WhitePixel(dpy, DefaultScreen(dpy));
 
 	attributes.background_pixel = whiteColor;
-	attributes.override_redirect = True;
+	attributes.override_redirect = False;
 	valuemask = CWBackPixel;
 
 	toplevel = XCreateWindow(dpy, DefaultRootWindow(dpy), 0, 0,
