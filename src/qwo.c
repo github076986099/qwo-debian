@@ -524,6 +524,7 @@ int main(int argc, char **argv)
 				XFetchName(dpy, e.xcrossing.window, &region_name);
 				region = region_name[0] - 48;
 				XFree(region_name);
+				KeySym index;
 
 				char c = '\0';
 
@@ -531,7 +532,6 @@ int main(int argc, char **argv)
 
 					if ((buffer[1] == buffer[buffer_count - 1]) && loaded_config && (buffer_count > 2)) {
 						buffer_count = (buffer_count - 1) >> 1;
-						KeySym index;
 
 						if (DIRECTION(buffer[1], buffer[2]))
 							index = custom_charset[buffer[1] - 1][(buffer_count << 1) - 1];
@@ -549,10 +549,11 @@ int main(int argc, char **argv)
 						c = charset[buffer[1] - 1][buffer[buffer_count - 1] - 1];
 							// X11 KeySym maps ASCII table
 						code = XKeysymToKeycode(dpy, c);
-						for (state_mod = 0; state_mod < 4; state_mod++) {
-							if (XKeycodeToKeysym(dpy, code, state_mod) == (KeySym) c) {
-								break;
-							}
+						index = (KeySym) c;
+					}
+					for (state_mod = 0; state_mod < 4; state_mod++) {
+						if (XKeycodeToKeysym(dpy, code, state_mod) == index) {
+							break;
 						}
 					}
 
