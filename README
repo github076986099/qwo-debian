@@ -8,12 +8,14 @@ text for hand-held devices almost without picking your finger off the screen.
 For information about QuikWriting, take a look at
 http://mrl.nyu.edu/~perlin/demos/quikwriting.html
 
-You can specify another font to use with the -f switch, for example:
-#qwo -f "-*-courier-bold-*-*-24-*-*-*-*-*-*-*"
+INSTALLATION:
 
 You will need to install illume-config-illume to change the default keyboard on
-the Freerunner, then click on the wrench, keyboard configuration utility and
-select qwo.
+the Freerunner. Deactivate Qtopia keyboard by adding the line:
+export QTOPIA_NO_VIRTUAL_KEYBOARD=1
+in the file /etc/X11/Xsession.d/89qtopia and restart the X server with:
+/etc/init.d/xserver-nodm restart
+Then click on the wrench, keyboard configuration utility and select qwo.
 
 Gestures are handled with key presses and thus should be strong enough.
 
@@ -53,6 +55,9 @@ first need to install libconfig (http://www.hyperrealm.com/libconfig/).  An
 example configuration file for a French layout is provided in data/qworc. You
 can access these characters by issuing a normal gesture and instead of going
 back to the center, go back to the first region entered.
+
+You can specify another font to use with the -f switch, for example:
+#qwo -f "-*-courier-bold-*-*-24-*-*-*-*-*-*-*"
 
 The definitions for the letters are the ones defined in /usr/include/X11/keysymdef.h
 without the "XK_" prefix.
