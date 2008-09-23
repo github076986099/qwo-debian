@@ -11,6 +11,10 @@ http://mrl.nyu.edu/~perlin/demos/quikwriting.html
 You can specify another font to use with the -f switch, for example:
 #qwo -f "-*-courier-bold-*-*-24-*-*-*-*-*-*-*"
 
+You will need to install illume-config-illume to change the default keyboard on
+the Freerunner, then click on the wrench, keyboard configuration utility and
+select qwo.
+
 Gestures are handled with key presses and thus should be strong enough.
 
 Numbers are issued with a press on the corresponding region of a numeric keypad,
