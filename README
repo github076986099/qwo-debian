@@ -17,6 +17,16 @@ in the file /etc/X11/Xsession.d/89qtopia and restart the X server with:
 /etc/init.d/xserver-nodm restart
 Then click on the wrench, keyboard configuration utility and select qwo.
 
+
+USAGE:
+
+Every normal gesture for printing the characters that are displayed by default
+starts and ends in the middle region of the screen. To input the character that
+is in the center of a region, start with your finger/stylus in the middle
+region, enter the one the character is in and go back to the center. To display
+the character that is on the left of the middle one, start in the center, go in
+the region and then to the adjacent region on the left and then in the center.
+
 Gestures are handled with key presses and thus should be strong enough.
 
 Numbers are issued with a press on the corresponding region of a numeric keypad,
