@@ -124,6 +124,8 @@ const XPoint point_nw = { WIDTH, 0};
 const XPoint point_sw = { WIDTH, HEIGHT};
 const XPoint point_se = { 0, HEIGHT};
 
+static Pixmap char_pixmaps[2];
+
 typedef enum {
 	KeyboardNone = 0,
 	KeyboardShow,
@@ -190,56 +192,7 @@ int load_font(Display *dpy, XFontStruct **font_info, char *font)
 	return 1;
 }
 
-void display_charset(Display *dpy, Window win, GC gc, XFontStruct *font_info, int upper_case)
-{
-	int len;
-	int font_height;
-	int i,j, count;
-	int offset;
-	XTextItem item = { NULL, 1, 0, font_info->fid };
-
-	font_height = font_info->ascent + font_info->descent;
-	len = XTextWidth(font_info, &charset[0][0], 1);
-	offset = WIDTH >> 3;
-
-	count = 0;
-	for (i = 0; i < 3; i++) {
-		for (j = 0; j < 3 && count != 8; j++, count++) {
-			char c;
-			if (upper_case) {
-				c = toupper((int) charset[i][j]);
-				item.chars = &c;
-			}
-			else
-				item.chars = &charset[i][j];
-			XDrawText(dpy, win, gc, offset * count, font_height, &item, 1);
-			if (upper_case) {
-				c = toupper((int) charset[i + 4][j + 4]);
-				item.chars = &c;
-			}
-			else
-				item.chars = &charset[i + 4][j + 4];
-			XDrawText(dpy, win, gc, WIDTH - (offset * count) - len, HEIGHT - font_info->descent, &item, 1);
-			if (upper_case) {
-				c = toupper((int) charset[i + 2][j + 2]);
-				item.chars = &c;
-			}
-			else
-				item.chars = &charset[i + 2][j + 2];
-			XDrawText(dpy, win, gc, WIDTH - 2 * len, offset * count + font_height, &item, 1);
-			if (upper_case) {
-				c = toupper((int) charset[(i + 6) & 7][(j + 6) & 7]);
-				item.chars = &c;
-			}
-			else
-				item.chars = &charset[(i + 6) & 7][(j + 6) & 7];
-			XDrawText(dpy, win, gc, len, HEIGHT - (offset * count), &item, 1);
-		}
-	}
-
-}
-
-void draw_grid(Display *dpy, Window toplevel, GC gc)
+void draw_grid(Display *dpy, Pixmap pixmap, GC gc)
 {
 	XColor grid_color, exact;
 	Colormap cmap;
@@ -251,19 +204,78 @@ void draw_grid(Display *dpy, Window toplevel, GC gc)
 
 	XSetForeground(dpy, gc, grid_color.pixel);
 
-	XDrawLine(dpy, toplevel, gc, point1.x, point1.y, point9.x, point9.y);
-	XDrawLine(dpy, toplevel, gc, point2.x, point2.y, point10.x, point10.y);
+	XDrawLine(dpy, pixmap, gc, point1.x, point1.y, point9.x, point9.y);
+	XDrawLine(dpy, pixmap, gc, point2.x, point2.y, point10.x, point10.y);
 
-	XDrawLine(dpy, toplevel, gc, point3.x, point3.y, point11.x, point11.y);
-	XDrawLine(dpy, toplevel, gc, point4.x, point4.y, point12.x, point12.y);
+	XDrawLine(dpy, pixmap, gc, point3.x, point3.y, point11.x, point11.y);
+	XDrawLine(dpy, pixmap, gc, point4.x, point4.y, point12.x, point12.y);
 
-	XDrawLine(dpy, toplevel, gc, point5.x, point5.y, point13.x, point13.y);
-	XDrawLine(dpy, toplevel, gc, point6.x, point6.y, point14.x, point14.y);
+	XDrawLine(dpy, pixmap, gc, point5.x, point5.y, point13.x, point13.y);
+	XDrawLine(dpy, pixmap, gc, point6.x, point6.y, point14.x, point14.y);
 
-	XDrawLine(dpy, toplevel, gc, point7.x, point7.y, point15.x, point15.y);
-	XDrawLine(dpy, toplevel, gc, point8.x, point8.y, point16.x, point16.y);
+	XDrawLine(dpy, pixmap, gc, point7.x, point7.y, point15.x, point15.y);
+	XDrawLine(dpy, pixmap, gc, point8.x, point8.y, point16.x, point16.y);
+
 	XSetForeground(dpy, gc, blackColor);
 
+}
+
+void create_charset(Display *dpy, GC gc, XFontStruct *font_info, int upper_case) {
+	int len;
+	int font_height;
+	int i,j, count;
+	int offset;
+	Pixmap pixmap;
+	XTextItem item = { NULL, 1, 0, font_info->fid };
+
+	pixmap = char_pixmaps[upper_case];
+
+	font_height = font_info->ascent + font_info->descent;
+	len = XTextWidth(font_info, &charset[0][0], 1);
+	offset = WIDTH >> 3;
+
+	unsigned long blackColor = BlackPixel(dpy, DefaultScreen(dpy));
+	unsigned long whiteColor = WhitePixel(dpy, DefaultScreen(dpy));
+
+	XSetForeground(dpy, gc, whiteColor);
+	XFillRectangle(dpy, pixmap, gc, 0, 0, WIDTH, HEIGHT);
+	XSetForeground(dpy, gc, blackColor);
+
+	count = 0;
+	for (i = 0; i < 3; i++) {
+		for (j = 0; j < 3 && count != 8; j++, count++) {
+			char c;
+			if (upper_case) {
+				c = toupper((int) charset[i][j]);
+				item.chars = &c;
+			}
+			else
+				item.chars = &charset[i][j];
+			XDrawText(dpy, pixmap, gc, offset * count, font_height, &item, 1);
+			if (upper_case) {
+				c = toupper((int) charset[i + 4][j + 4]);
+				item.chars = &c;
+			}
+			else
+				item.chars = &charset[i + 4][j + 4];
+			XDrawText(dpy, pixmap, gc, WIDTH - (offset * count) - len, HEIGHT - font_info->descent, &item, 1);
+			if (upper_case) {
+				c = toupper((int) charset[i + 2][j + 2]);
+				item.chars = &c;
+			}
+			else
+				item.chars = &charset[i + 2][j + 2];
+			XDrawText(dpy, pixmap, gc, WIDTH - 2 * len, offset * count + font_height, &item, 1);
+			if (upper_case) {
+				c = toupper((int) charset[(i + 6) & 7][(j + 6) & 7]);
+				item.chars = &c;
+			}
+			else
+				item.chars = &charset[(i + 6) & 7][(j + 6) & 7];
+			XDrawText(dpy, pixmap, gc, len, HEIGHT - (offset * count), &item, 1);
+		}
+	}
+	draw_grid(dpy, pixmap, gc);
 }
 
 #ifdef HAVE_LIBCONFIG
@@ -363,6 +375,17 @@ int init_keycodes(Display *dpy){
 	return 0;
 }
 
+void update_display(Display *dpy, Window toplevel, GC gc, int shift){
+
+	XClearWindow(dpy, toplevel);
+	if (shift) {
+		XCopyArea(dpy, char_pixmaps[1], toplevel, gc, 0,0, WIDTH, HEIGHT, 0, 0);
+	} else {
+		XCopyArea(dpy, char_pixmaps[0], toplevel, gc, 0,0, WIDTH, HEIGHT, 0, 0);
+	}
+	XSync(dpy, False);
+}
+
 int main(int argc, char **argv)
 {
 	Display *dpy;
@@ -444,15 +467,16 @@ int main(int argc, char **argv)
 
 	attributes.background_pixel = whiteColor;
 	attributes.override_redirect = False;
-	valuemask = CWBackPixel;
+	valuemask = CWBackPixel | CWOverrideRedirect;
 
 	toplevel = XCreateWindow(dpy, DefaultRootWindow(dpy), 0, 0,
 			WIDTH, HEIGHT, 0, CopyFromParent, CopyFromParent,
 			CopyFromParent, valuemask, &attributes);
 
 	xgc.foreground = blackColor;
+	xgc.background = whiteColor;
 	xgc.line_width = 2;
-	valuemask = GCForeground | GCLineWidth;
+	valuemask = GCForeground | GCBackground | GCLineWidth;
 
 	gc = XCreateGC(dpy, toplevel, valuemask, &xgc);
 
@@ -474,9 +498,13 @@ int main(int argc, char **argv)
 
 	XSetFont(dpy, gc, font_info->fid);
 
-	draw_grid(dpy, toplevel, gc);
-	display_charset(dpy, toplevel, gc, font_info, shift_modifier);
-	XSync(dpy, False);
+	char_pixmaps[0] = XCreatePixmap(dpy, toplevel, WIDTH, HEIGHT, DefaultDepth(dpy, DefaultScreen(dpy)));
+	char_pixmaps[1] = XCreatePixmap(dpy, toplevel, WIDTH, HEIGHT, DefaultDepth(dpy, DefaultScreen(dpy)));
+
+	create_charset(dpy, gc, font_info, 0);
+	create_charset(dpy, gc, font_info, 1);
+
+	update_display(dpy, toplevel, gc, shift_modifier);
 
 	while(run) {
 		XEvent e;
@@ -586,9 +614,7 @@ int main(int argc, char **argv)
 
 						if (buffer_count != 2) {
 							XClearWindow(dpy, toplevel);
-							draw_grid(dpy, toplevel, gc);
-							display_charset(dpy, toplevel, gc, font_info, shift_modifier);
-							XSync(dpy, False);
+							update_display(dpy, toplevel, gc, shift_modifier);
 							buffer_count = 1;
 							buffer[0] = 0;
 							break;
@@ -612,9 +638,7 @@ int main(int argc, char **argv)
 						if (shift_modifier == 1) {
 							shift_modifier = 0;
 							XClearWindow(dpy, toplevel);
-							draw_grid(dpy, toplevel, gc);
-							display_charset(dpy, toplevel, gc, font_info, shift_modifier);
-							XSync(dpy, False);
+							update_display(dpy, toplevel, gc, shift_modifier);
 						}
 					}
 
@@ -634,17 +658,13 @@ int main(int argc, char **argv)
 			case Expose:
 			case ConfigureNotify:
 				XMapWindow(dpy, toplevel);
-				draw_grid(dpy, toplevel, gc);
-				display_charset(dpy, toplevel, gc, font_info, shift_modifier);
-				XSync(dpy, False);
+				update_display(dpy, toplevel, gc, shift_modifier);
 			case ClientMessage:
 				if ((e.xclient.message_type == mb_im_invoker_command) ||
 					(e.xclient.message_type == mtp_im_invoker_command)) {
 					if (e.xclient.data.l[0] == KeyboardShow) {
 						XMapWindow(dpy, toplevel);
-						draw_grid(dpy, toplevel, gc);
-						display_charset(dpy, toplevel, gc, font_info, shift_modifier);
-						XSync(dpy, False);
+						update_display(dpy, toplevel, gc, shift_modifier);
 					}
 					if (e.xclient.data.l[0] == KeyboardHide) {
 						XUnmapWindow(dpy, toplevel);
@@ -657,9 +677,7 @@ int main(int argc, char **argv)
 							visible = 0;
 						} else {
 							XMapWindow(dpy, toplevel);
-							draw_grid(dpy, toplevel, gc);
-							display_charset(dpy, toplevel, gc, font_info, shift_modifier);
-							XSync(dpy, False);
+							update_display(dpy, toplevel, gc, shift_modifier);
 							visible = 1;
 						}
 					}
@@ -675,6 +693,8 @@ int main(int argc, char **argv)
 
 	XFreeFont(dpy, font_info);
 	XFreeGC(dpy, gc);
+	XFreePixmap(dpy, char_pixmaps[0]);
+	XFreePixmap(dpy, char_pixmaps[1]);
 	XDestroyWindow(dpy, toplevel);
 	XCloseDisplay(dpy);
 
