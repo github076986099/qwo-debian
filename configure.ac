@@ -18,6 +18,19 @@ AC_CHECK_LIB(Xtst, XTestFakeKeyEvent)
 
 AC_CHECK_LIB(config, config_read)
 
+dnl Check for imlib2 library
+
+AC_PATH_PROG(IMLIB2_CONFIG, imlib2-config, no)
+
+if test "$IMLIB2_CONFIG" = "no" ; then
+    AC_MSG_ERROR([
+*** Unable to find Imlib2 library.])
+else
+    CFLAGS="$CFLAGS `$IMLIB2_CONFIG --cflags`"
+    LIBS="$LIBS `$IMLIB2_CONFIG --libs`"
+fi
+
+
 AC_OUTPUT([
 Makefile
 src/Makefile

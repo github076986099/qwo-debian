@@ -1,16 +1,10 @@
 #
 # misc. data files
 #
-dist_pkgdata_DATA = qwo.desktop qwo.png qworc
+dist_pkgdata_DATA = qwo.desktop qworc normal.png caps.png extra.png
 
 #
 # desktop integration: .desktop file
 #
 desktopdir = $(datadir)/applications
 dist_desktop_DATA = qwo.desktop
-
-#
-# desktop integration: application icon
-#
-appicondir = $(datadir)/pixmaps
-dist_appicon_DATA = qwo.png

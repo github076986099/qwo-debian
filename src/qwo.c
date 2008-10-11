@@ -36,6 +36,8 @@
 #include <X11/keysym.h>
 #include <locale.h>
 
+#include <Imlib2.h>
+
 #ifdef HAVE_LIBCONFIG
 #include <libconfig.h>
 #endif
@@ -50,11 +52,18 @@
 #define BORDER_WIDTH            3
 
 #define GRID_COLOR				"orange"
-//#define DEFAULT_FONT    "-*-courier-bold-*-*-12-*-*-*-*-*-*-*"
-#define DEFAULT_FONT    "fixed"
 
 #define CONFIG_FILE		"/.qworc"
-#define MAX_CONFIG_PATH 30
+#define MAX_CONFIG_PATH 50
+
+#define DATA_PATH		DATADIR "/" PACKAGE_NAME "/"
+
+#define MAX_IMAGE_NAME 10
+#define MAX_IMAGE_PATH 50
+
+#define MAX_IMAGES		3
+
+#define IMAGE_SUFFIXE ".png"
 
 #define MAX_CHAR_PER_REGION		 5
 
@@ -73,10 +82,10 @@
 		(abs(b - a) == 1) ? ( (b - a) == 1) : (b - a) < 0
 
 char charset[][MAX_REGIONS] = {
-		"abc??"">>z",
-		"def?????",
-		"ghijk???",
-		"??l>,???",
+		"a,z?>>>c",
+		"deb?????",
+		"fgihj???",
+		"??l>k???",
 		"??mnopq?",
 		"????tsr?",
 		"????.vuw",
@@ -84,19 +93,21 @@ char charset[][MAX_REGIONS] = {
 };
 
 KeySym char_free[MAX_REGIONS][MAX_REGIONS] = {
-	{XK_KP_5, 0xffff, XK_Up, 0xffff, XK_Right, 0xffff, XK_KP_0, 0xffff, XK_Left},
-	{0xffff, XK_KP_1, XK_Tab, XK_question, 0xffff, 0xffff, 0xffff, 0xffff, XK_slash},
-	{0xffff, 0xffff, XK_KP_2, XK_minus, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff},
-	{0xffff, 0xffff, 0xffff, XK_KP_3, XK_backslash, 0xffff, 0xffff, 0xffff, 0xffff},
-	{0xffff, 0xffff, 0xffff, 0xffff, XK_KP_6, XK_Return, 0xffff, 0xffff, 0xffff},
-	{0xffff, 0xffff, 0xffff, 0xffff, 0xffff, XK_KP_9, 0xffff, 0xffff, 0xffff},
-	{0xffff, 0xffff, 0xffff, 0xffff, 0xffff, XK_underscore, XK_KP_8, 0xffff, 0xffff},
-	{0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, XK_KP_7, 0xffff},
-	{0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, XK_Control_L, XK_Down, XK_KP_4}};
+	{XK_KP_5, 0xffff, XK_Up, 0xffff, XK_Right, XK_greater, XK_KP_0, XK_less, XK_Left},
+	{0xffff, XK_KP_1, XK_Tab, XK_KP_Multiply, 0xffff, 0xffff, 0xffff, XK_parenleft, XK_slash},
+	{XK_Down, XK_exclam, XK_KP_2, XK_minus, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff},
+	{0xffff, XK_equal, XK_dollar, XK_KP_3, XK_backslash, XK_parenright, 0xffff, 0xffff, 0xffff},
+	{0xffff, 0xffff, 0xffff, XK_plus, XK_KP_6, XK_Return, 0xffff, 0xffff, 0xffff},
+	{0xffff, 0xffff, 0xffff, XK_colon, XK_semicolon, XK_KP_9, XK_bracketright, XK_at, 0xffff},
+	{0xffff, 0xffff, 0xffff, 0xffff, 0xffff, XK_underscore, XK_KP_8, XK_braceright, 0xffff},
+	{0xffff, XK_ampersand, 0xffff, 0xffff, 0xffff, XK_braceleft, XK_bracketleft, XK_KP_7, XK_numbersign},
+	{0xffff, XK_quotedbl, 0xffff, 0xffff, 0xffff, 0xffff, XK_Control_L, XK_Down, XK_KP_4}};
 
 static KeyCode Shift_code, Control_code;
 
 KeySym custom_charset[MAX_REGIONS - 1][MAX_CHAR_PER_REGION];
+
+char image_names[][MAX_IMAGE_NAME] = { "normal", "caps", "extra" };
 
 const XPoint point1 = { WIDTH / 3, 0 };
 const XPoint point2 = { 2*(WIDTH / 3), 0 };
@@ -124,7 +135,7 @@ const XPoint point_nw = { WIDTH, 0};
 const XPoint point_sw = { WIDTH, HEIGHT};
 const XPoint point_se = { 0, HEIGHT};
 
-static Pixmap char_pixmaps[2];
+static Pixmap char_pixmaps[3];
 
 typedef enum {
 	KeyboardNone = 0,
@@ -181,17 +192,6 @@ void init_regions(Display *dpy, Window toplevel)
 	XFree(wm_hints);
 }
 
-int load_font(Display *dpy, XFontStruct **font_info, char *font)
-{
-	if (font == NULL)
-		font = DEFAULT_FONT;
-	if ((*font_info = XLoadQueryFont(dpy, font)) == NULL){
-		fprintf( stderr, "Cannot open font %s\n", font);
-		return 0;
-	}
-	return 1;
-}
-
 void draw_grid(Display *dpy, Pixmap pixmap, GC gc)
 {
 	XColor grid_color, exact;
@@ -220,62 +220,49 @@ void draw_grid(Display *dpy, Pixmap pixmap, GC gc)
 
 }
 
-void create_charset(Display *dpy, GC gc, XFontStruct *font_info, int upper_case) {
-	int len;
-	int font_height;
-	int i,j, count;
-	int offset;
-	Pixmap pixmap;
-	XTextItem item = { NULL, 1, 0, font_info->fid };
-
-	pixmap = char_pixmaps[upper_case];
-
-	font_height = font_info->ascent + font_info->descent;
-	len = XTextWidth(font_info, &charset[0][0], 1);
-	offset = WIDTH >> 3;
+int load_charset(Display *dpy, GC gc, int num){
+	Visual *vis;
+	Colormap cm;
+	int depth;
+	char image_path[MAX_IMAGE_PATH];
+	Imlib_Image image;
 
 	unsigned long blackColor = BlackPixel(dpy, DefaultScreen(dpy));
 	unsigned long whiteColor = WhitePixel(dpy, DefaultScreen(dpy));
 
 	XSetForeground(dpy, gc, whiteColor);
-	XFillRectangle(dpy, pixmap, gc, 0, 0, WIDTH, HEIGHT);
+	XFillRectangle(dpy, char_pixmaps[num], gc, 0, 0, WIDTH, HEIGHT);
 	XSetForeground(dpy, gc, blackColor);
 
-	count = 0;
-	for (i = 0; i < 3; i++) {
-		for (j = 0; j < 3 && count != 8; j++, count++) {
-			char c;
-			if (upper_case) {
-				c = toupper((int) charset[i][j]);
-				item.chars = &c;
-			}
-			else
-				item.chars = &charset[i][j];
-			XDrawText(dpy, pixmap, gc, offset * count, font_height, &item, 1);
-			if (upper_case) {
-				c = toupper((int) charset[i + 4][j + 4]);
-				item.chars = &c;
-			}
-			else
-				item.chars = &charset[i + 4][j + 4];
-			XDrawText(dpy, pixmap, gc, WIDTH - (offset * count) - len, HEIGHT - font_info->descent, &item, 1);
-			if (upper_case) {
-				c = toupper((int) charset[i + 2][j + 2]);
-				item.chars = &c;
-			}
-			else
-				item.chars = &charset[i + 2][j + 2];
-			XDrawText(dpy, pixmap, gc, WIDTH - 2 * len, offset * count + font_height, &item, 1);
-			if (upper_case) {
-				c = toupper((int) charset[(i + 6) & 7][(j + 6) & 7]);
-				item.chars = &c;
-			}
-			else
-				item.chars = &charset[(i + 6) & 7][(j + 6) & 7];
-			XDrawText(dpy, pixmap, gc, len, HEIGHT - (offset * count), &item, 1);
-		}
+	vis = DefaultVisual(dpy, DefaultScreen(dpy));
+	depth = DefaultDepth(dpy, DefaultScreen(dpy));
+	cm = DefaultColormap(dpy, DefaultScreen(dpy));
+
+	imlib_context_set_display(dpy);
+	imlib_context_set_visual(vis);
+	imlib_context_set_colormap(cm);
+	imlib_context_set_progress_function(NULL);
+
+	imlib_context_set_drawable(char_pixmaps[num]);
+
+	strncpy(image_path, DATA_PATH, MAX_IMAGE_PATH);
+	strncat(image_path + strlen(DATA_PATH), image_names[num],
+		MAX_IMAGE_PATH - strlen(DATA_PATH));
+	strncat(image_path + strlen(DATA_PATH) + strlen(image_names[num]),
+			IMAGE_SUFFIXE, MAX_IMAGE_PATH - strlen(DATA_PATH) - strlen(image_names[num]));
+	image = imlib_load_image(image_path);
+	if (!image) {
+		fprintf(stderr, "%s : Can't open file\n", image_path);
+		return 1;
 	}
-	draw_grid(dpy, pixmap, gc);
+	imlib_context_set_image(image);
+	imlib_render_image_on_drawable(0, 0);
+
+	draw_grid(dpy, char_pixmaps[num], gc);
+
+	imlib_free_image();
+
+	return 0;
 }
 
 #ifdef HAVE_LIBCONFIG
@@ -375,10 +362,12 @@ int init_keycodes(Display *dpy){
 	return 0;
 }
 
-void update_display(Display *dpy, Window toplevel, GC gc, int shift){
+void update_display(Display *dpy, Window toplevel, GC gc, int shift, int help){
 
 	XClearWindow(dpy, toplevel);
-	if (shift) {
+	if (help) {
+		XCopyArea(dpy, char_pixmaps[MAX_IMAGES - 1], toplevel, gc, 0,0, WIDTH, HEIGHT, 0, 0);
+	} else if (shift) {
 		XCopyArea(dpy, char_pixmaps[1], toplevel, gc, 0,0, WIDTH, HEIGHT, 0, 0);
 	} else {
 		XCopyArea(dpy, char_pixmaps[0], toplevel, gc, 0,0, WIDTH, HEIGHT, 0, 0);
@@ -391,10 +380,7 @@ int main(int argc, char **argv)
 	Display *dpy;
 	char *display_name;
 	Window toplevel;
-	XSetWindowAttributes attributes;
 
-	char *font_name = NULL;
-	XFontStruct *font_info;
 	unsigned long valuemask;
 	XGCValues xgc;
 	GC gc;
@@ -411,6 +397,8 @@ int main(int argc, char **argv)
 	int buffer_count = 0;
 	int shift_modifier = 0;
 	int ctrl_modifier = 0;
+	int help_screen = 0;
+	int i, status = 0;
 	Time last_cross_timestamp = 0L;
 	Time last_pressed = 0L;
 
@@ -418,9 +406,6 @@ int main(int argc, char **argv)
 	options = getopt(argc, argv, "f:c:");
 
 	switch(options){
-		case 'f':
-			font_name = optarg;
-			break;
 		case 'c':
 			config_path = optarg;
 			break;
@@ -462,23 +447,16 @@ int main(int argc, char **argv)
 
 	XShapeQueryVersion(dpy, &shape_ext_major, &shape_ext_minor);
 
-	unsigned long blackColor = BlackPixel(dpy, DefaultScreen(dpy));
-	unsigned long whiteColor = WhitePixel(dpy, DefaultScreen(dpy));
-
-	attributes.background_pixel = whiteColor;
-	attributes.override_redirect = False;
-	valuemask = CWBackPixel | CWOverrideRedirect;
-
-	toplevel = XCreateWindow(dpy, DefaultRootWindow(dpy), 0, 0,
-			WIDTH, HEIGHT, 0, CopyFromParent, CopyFromParent,
-			CopyFromParent, valuemask, &attributes);
-
-	xgc.foreground = blackColor;
-	xgc.background = whiteColor;
+	xgc.foreground = BlackPixel(dpy, DefaultScreen(dpy));
+	xgc.background = WhitePixel(dpy, DefaultScreen(dpy));
 	xgc.line_width = 2;
 	valuemask = GCForeground | GCBackground | GCLineWidth;
 
-	gc = XCreateGC(dpy, toplevel, valuemask, &xgc);
+	gc = XCreateGC(dpy, DefaultRootWindow(dpy), valuemask, &xgc);
+
+	toplevel = XCreateWindow(dpy, DefaultRootWindow(dpy), 0, 0,
+			WIDTH, HEIGHT, 0, CopyFromParent, CopyFromParent,
+			CopyFromParent, 0, NULL);
 
 	init_regions(dpy, toplevel);
 
@@ -490,21 +468,14 @@ int main(int argc, char **argv)
 
 	XMapWindow(dpy, toplevel);
 
-	if(!(load_font(dpy, &font_info, font_name))) {
-		XDestroyWindow(dpy, toplevel);
-		XCloseDisplay(dpy);
-		exit(-1);
+	for( i = 0; i < MAX_IMAGES; i++) {
+		char_pixmaps[i] = XCreatePixmap(dpy, toplevel, WIDTH, HEIGHT, DefaultDepth(dpy, DefaultScreen(dpy)));
+		status |= load_charset(dpy, gc, i);
 	}
+	if (status)
+		run = 0;
 
-	XSetFont(dpy, gc, font_info->fid);
-
-	char_pixmaps[0] = XCreatePixmap(dpy, toplevel, WIDTH, HEIGHT, DefaultDepth(dpy, DefaultScreen(dpy)));
-	char_pixmaps[1] = XCreatePixmap(dpy, toplevel, WIDTH, HEIGHT, DefaultDepth(dpy, DefaultScreen(dpy)));
-
-	create_charset(dpy, gc, font_info, 0);
-	create_charset(dpy, gc, font_info, 1);
-
-	update_display(dpy, toplevel, gc, shift_modifier);
+	update_display(dpy, toplevel, gc, shift_modifier, help_screen);
 
 	while(run) {
 		XEvent e;
@@ -604,17 +575,19 @@ int main(int argc, char **argv)
 							}
 							XTestFakeKeyEvent(dpy, code, True, 0);
 							XTestFakeKeyEvent(dpy, code, False, 0);
-						} else if (shift_modifier) {
-							shift_modifier = 0;
+						} else if (shift_modifier || help_screen) {
+							shift_modifier = help_screen = 0;
 						} else if (buffer_count == 4) {
 							shift_modifier = 1;
 						} else if (buffer_count == 5) {
 							shift_modifier = 2;
+						} else if (buffer_count == 6) {
+							help_screen = 1;
 						}
 
 						if (buffer_count != 2) {
 							XClearWindow(dpy, toplevel);
-							update_display(dpy, toplevel, gc, shift_modifier);
+							update_display(dpy, toplevel, gc, shift_modifier, help_screen);
 							buffer_count = 1;
 							buffer[0] = 0;
 							break;
@@ -638,7 +611,7 @@ int main(int argc, char **argv)
 						if (shift_modifier == 1) {
 							shift_modifier = 0;
 							XClearWindow(dpy, toplevel);
-							update_display(dpy, toplevel, gc, shift_modifier);
+							update_display(dpy, toplevel, gc, shift_modifier, help_screen);
 						}
 					}
 
@@ -658,13 +631,13 @@ int main(int argc, char **argv)
 			case Expose:
 			case ConfigureNotify:
 				XMapWindow(dpy, toplevel);
-				update_display(dpy, toplevel, gc, shift_modifier);
+				update_display(dpy, toplevel, gc, shift_modifier, help_screen);
 			case ClientMessage:
 				if ((e.xclient.message_type == mb_im_invoker_command) ||
 					(e.xclient.message_type == mtp_im_invoker_command)) {
 					if (e.xclient.data.l[0] == KeyboardShow) {
 						XMapWindow(dpy, toplevel);
-						update_display(dpy, toplevel, gc, shift_modifier);
+						update_display(dpy, toplevel, gc, shift_modifier, help_screen);
 					}
 					if (e.xclient.data.l[0] == KeyboardHide) {
 						XUnmapWindow(dpy, toplevel);
@@ -677,7 +650,7 @@ int main(int argc, char **argv)
 							visible = 0;
 						} else {
 							XMapWindow(dpy, toplevel);
-							update_display(dpy, toplevel, gc, shift_modifier);
+							update_display(dpy, toplevel, gc, shift_modifier, help_screen);
 							visible = 1;
 						}
 					}
@@ -691,7 +664,6 @@ int main(int argc, char **argv)
 			}
 	}
 
-	XFreeFont(dpy, font_info);
 	XFreeGC(dpy, gc);
 	XFreePixmap(dpy, char_pixmaps[0]);
 	XFreePixmap(dpy, char_pixmaps[1]);
