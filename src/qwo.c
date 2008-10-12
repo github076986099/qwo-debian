@@ -101,7 +101,7 @@ KeySym char_free[MAX_REGIONS][MAX_REGIONS] = {
 	{0xffff, 0xffff, 0xffff, XK_colon, XK_semicolon, XK_KP_9, XK_bracketright, XK_at, 0xffff},
 	{0xffff, 0xffff, 0xffff, 0xffff, 0xffff, XK_underscore, XK_KP_8, XK_braceright, 0xffff},
 	{0xffff, XK_ampersand, 0xffff, 0xffff, 0xffff, XK_braceleft, XK_bracketleft, XK_KP_7, XK_numbersign},
-	{0xffff, XK_quotedbl, 0xffff, 0xffff, 0xffff, 0xffff, XK_Control_L, XK_Down, XK_KP_4}};
+	{0xffff, XK_Escape, 0xffff, 0xffff, 0xffff, 0xffff, XK_Control_L, XK_quotedbl, XK_KP_4}};
 
 static KeyCode Shift_code, Control_code;
 
