@@ -55,5 +55,7 @@ example configuration file for a French layout is provided in data/qworc. You
 can access these characters by issuing a normal gesture and instead of going
 back to the center, go back to the first region entered.
 
+These characters also need to be mapped on the keyboard.
+
 The definitions for the letters are the ones defined in /usr/include/X11/keysymdef.h
 without the "XK_" prefix.
