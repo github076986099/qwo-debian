@@ -1,3 +1,11 @@
+2008-10-12	Charles Clément <caratorn@gmail.com>
+
+	* 0.3 release
+	* Load character set images instead of drawing text
+	* Use pixmaps to display the background
+	* Extend default charset
+	* Add help screen
+
 2008-09-21	Charles Clément <caratorn@gmail.com>
 
 	* 0.2 release

@@ -10,6 +10,8 @@ http://mrl.nyu.edu/~perlin/demos/quikwriting.html
 
 INSTALLATION:
 
+qwo needs imlib2 and libconfig libraries.
+
 You will need to install illume-config-illume to change the default keyboard on
 the Freerunner. Deactivate Qtopia keyboard by adding the line:
 export QTOPIA_NO_VIRTUAL_KEYBOARD=1
@@ -33,31 +35,18 @@ Numbers are issued with a press on the corresponding region of a numeric keypad,
 except for the 0, currently issued by entering the center region and releasing
 in the one below.
 
-The character > appears twice, the one in the upper left region is a modifier
-and will change the case to uppercase for the next inputed character; extending
-the gesture one region past its normal destination will lock the case to upper,
-to return to normal issue the > again.
+The arrow is a modifier and will change the case to uppercase for the next
+inputed character; extending the gesture one region past its normal destination
+will lock the case to upper, to return to lowercase, issue the arrow again.
 
 The left < and right > of the center area are, respectively, the delete and
-space. You can delete the whole text buffer content by staying at least three
-seconds on the region containing the delete action, doing the same on the space
-will add a new line at the cursor position.
+space.
 
 Other characters can be obtained without beginning and ending in the center, the
-current keymap for these is:
-
------------------------------------------
-1   Tab         |   2 -|                3
-/                                       \
------------------------------------------
-            |       up       |
-4           |left   5   right|          6
-down Control|       0        |      Enter
------------------------------------------
-
-
-7                |  7  _|               9
------------------------------------------
+current keymap for these can be displayed on the screen using the shift modifier
+and extending the gesture past the capslock one. You enter the region on the top
+left from the center, go to the bottom left, bottom right and back to the
+center.
 
 It is possible to customize the layout by adding a configuration file in your
 home directory named .qworc or with the command line switch -c <file_name>.  You
@@ -65,9 +54,6 @@ first need to install libconfig (http://www.hyperrealm.com/libconfig/).  An
 example configuration file for a French layout is provided in data/qworc. You
 can access these characters by issuing a normal gesture and instead of going
 back to the center, go back to the first region entered.
-
-You can specify another font to use with the -f switch, for example:
-#qwo -f "-*-courier-bold-*-*-24-*-*-*-*-*-*-*"
 
 The definitions for the letters are the ones defined in /usr/include/X11/keysymdef.h
 without the "XK_" prefix.

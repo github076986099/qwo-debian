@@ -1,5 +1,5 @@
 AC_PREREQ(2.53)
-AC_INIT(qwo, 0.2, http://projects.openmoko.org/projects/qwo/)
+AC_INIT(qwo, 0.3, http://projects.openmoko.org/projects/qwo/)
 AM_INIT_AUTOMAKE()
 AC_CONFIG_SRCDIR(src/qwo.c)
 AM_CONFIG_HEADER(config.h)
