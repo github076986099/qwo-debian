@@ -1,0 +1,3 @@
+version=3
+
+http://projects.openmoko.org/frs/?group_id=130 /frs/download.php/[0-9]+/qwo-(.*)\.tar\.gz
