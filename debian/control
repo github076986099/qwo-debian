@@ -2,14 +2,13 @@ Source: qwo
 Section: x11
 Priority: optional
 Maintainer: Christian M. Amsüss <chrysn@fsfe.org>
-FIXME: identify dependencies
-Build-Depends: debhelper (>= 7), autotools-dev
+Build-Depends: debhelper (>= 7), autotools-dev, libimlib2-dev, libconfig0-dev
 Standards-Version: 3.8.0
 Homepage: http://qwo.projects.openmoko.org/
 
 Package: qwo
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, libimlib2, libconfig0
 Description: Fast input method for X11 on touch devices
  qwo is an implementation of Quikwriting, an efficient way to input text for
  hand-held devices almost without picking your finger off the screen.
