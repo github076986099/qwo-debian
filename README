@@ -59,3 +59,5 @@ These characters also need to be mapped on the keyboard.
 
 The definitions for the letters are the ones defined in /usr/include/X11/keysymdef.h
 without the "XK_" prefix.
+
+Window decorations can be disabled with the -d command line switch.

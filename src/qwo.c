@@ -42,6 +42,19 @@
 #include <libconfig.h>
 #endif
 
+// needed for setting motif hints
+#define PROP_MOTIF_WM_HINTS_ELEMENTS    5
+#define MWM_HINTS_DECORATIONS          (1L << 1)
+typedef struct
+{
+	unsigned long       flags;
+	unsigned long       functions;
+	unsigned long       decorations;
+	long                inputMode;
+	unsigned long       status;
+} PropMotifWmHints;
+// end motif hints
+
 #define WIDTH   300
 #define HEIGHT  WIDTH
 
@@ -325,8 +338,10 @@ int read_config(char *config_path, char **geometry)
 }
 #endif
 
-int set_window_properties(Display *dpy, Window toplevel){
+int set_window_properties(Display *dpy, Window toplevel, char decorations){
 	XWMHints *wm_hints;
+	Atom mwm_atom = XInternAtom(dpy, "_MOTIF_WM_HINTS",False);
+	PropMotifWmHints mwm_hints;
 
 	XStoreName(dpy, toplevel, "Keyboard");
 
@@ -337,6 +352,16 @@ int set_window_properties(Display *dpy, Window toplevel){
 		wm_hints->flags = InputHint;
 		XSetWMHints(dpy, toplevel, wm_hints);
 		XFree(wm_hints);
+	}
+	if (decorations == 0)
+	{
+		// mwm_hints->input seems not to have any effect in metacity
+		// unless the motif hint "mwm_hints->decorations = 0" is set
+		mwm_hints.flags = MWM_HINTS_DECORATIONS;
+		mwm_hints.decorations = 0;
+		XChangeProperty(dpy, toplevel, mwm_atom, XA_ATOM, 32,
+				PropModeReplace, (unsigned char *)&mwm_hints,
+				PROP_MOTIF_WM_HINTS_ELEMENTS);
 	}
 
 	wmDeleteMessage = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
@@ -419,6 +444,7 @@ int main(int argc, char **argv)
 	char *config_path = NULL;
 	char *config_geometry = NULL;
 	char *switch_geometry = NULL;
+	char decorations = 1; // 0 if decorations are to be hidden
 	int loaded_config = 0;
 	int run = 1;
 	int options;
@@ -433,7 +459,7 @@ int main(int argc, char **argv)
 	Time last_pressed = 0L;
 
 
-	while ((options = getopt(argc, argv, "c:g:")) != -1)
+	while ((options = getopt(argc, argv, "dc:g:")) != -1)
 	{
 		switch(options){
 			case 'c':
@@ -442,6 +468,11 @@ int main(int argc, char **argv)
 			case 'g':
 				switch_geometry = optarg;
 				break;
+			case 'd':
+				printf("Decorations will be disabled");
+				decorations = 0;
+				break;
+
 		}
 	}
 
@@ -494,7 +525,7 @@ int main(int argc, char **argv)
 
 	init_regions(dpy, toplevel);
 
-	set_window_properties(dpy, toplevel);
+	set_window_properties(dpy, toplevel, decorations);
 
 	init_keycodes(dpy);
 
