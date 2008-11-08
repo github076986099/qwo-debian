@@ -21,6 +21,8 @@ CROSS= --build $(DEB_BUILD_GNU_TYPE)
 endif
 
 
+configure:
+	NOCONFIGURE=1 ./autogen.sh
 
 config.status: configure
 	dh_testdir
