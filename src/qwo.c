@@ -660,7 +660,6 @@ int main(int argc, char **argv)
 					run = 0;
 				break;
 			default:
-				printf("Received event %i\n", e.type);
 			}
 	}
 
