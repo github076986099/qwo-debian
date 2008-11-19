@@ -659,7 +659,6 @@ int main(int argc, char **argv)
 				if (e.xclient.data.l[0] == wmDeleteMessage)
 					run = 0;
 				break;
-			default:
 			}
 	}
 
