@@ -329,11 +329,9 @@ int set_window_properties(Display *dpy, Window toplevel){
 		XFree(wm_hints);
 	}
 
-	size_hints.flags = PPosition | PSize;
-	size_hints.x = 0;
-	size_hints.y = 0;
-	size_hints.width = WIDTH;
-	size_hints.height = HEIGHT;
+	size_hints.flags = PMinSize | PMaxSize;
+	size_hints.min_width = size_hints.max_width = WIDTH;
+	size_hints.min_height = size_hints.max_height = HEIGHT;
 
 	XSetStandardProperties(dpy, toplevel, "Keyboard", NULL, 0, NULL, 0,
 			&size_hints);
