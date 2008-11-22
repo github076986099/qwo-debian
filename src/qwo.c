@@ -403,12 +403,13 @@ int main(int argc, char **argv)
 	Time last_pressed = 0L;
 
 
-	options = getopt(argc, argv, "f:c:");
-
-	switch(options){
-		case 'c':
-			config_path = optarg;
-			break;
+	while ((options = getopt(argc, argv, "c:")) != -1)
+	{
+		switch(options){
+			case 'c':
+				config_path = optarg;
+				break;
+		}
 	}
 
 	display_name = XDisplayName(NULL);
