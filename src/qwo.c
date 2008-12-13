@@ -266,12 +266,12 @@ int load_charset(Display *dpy, GC gc, int num){
 }
 
 #ifdef HAVE_LIBCONFIG
-int read_config(char *config_path)
+int read_config(char *config_path, char **geometry)
 {
 	int j, i = 0;
 	config_t configuration;
 	FILE * file;
-	const char *keysym_name;
+	const char *keysym_name, *string;
 	KeySym key;
 	const config_setting_t *keymap;
 	const config_setting_t *line;
@@ -290,7 +290,7 @@ int read_config(char *config_path)
 	fclose(file);
 	keymap = config_lookup(&configuration, "charset");
 
-	if (keymap)
+	if (keymap) {
 		for (i = 0 ; i < config_setting_length(keymap) ; i++) {
 			line = config_setting_get_elem(keymap, i);
 			for (j = 0 ; j < config_setting_length(line); j++) {
@@ -311,14 +311,24 @@ int read_config(char *config_path)
 				custom_charset[i][j] = '\0';
 			}
 		}
+	}
+
+	string = config_lookup_string(&configuration, "geometry");
+
+	if (string) {
+		*geometry = (char *) malloc(sizeof(char) * strlen(string));
+		strcpy(*geometry, string);
+	}
+
 	config_destroy(&configuration);
 	return 1;
 }
 #endif
 
 int set_window_properties(Display *dpy, Window toplevel){
-	XSizeHints	size_hints;
 	XWMHints *wm_hints;
+
+	XStoreName(dpy, toplevel, "Keyboard");
 
 	wm_hints = XAllocWMHints();
 
@@ -328,13 +338,6 @@ int set_window_properties(Display *dpy, Window toplevel){
 		XSetWMHints(dpy, toplevel, wm_hints);
 		XFree(wm_hints);
 	}
-
-	size_hints.flags = PMinSize | PMaxSize;
-	size_hints.min_width = size_hints.max_width = WIDTH;
-	size_hints.min_height = size_hints.max_height = HEIGHT;
-
-	XSetStandardProperties(dpy, toplevel, "Keyboard", NULL, 0, NULL, 0,
-			&size_hints);
 
 	wmDeleteMessage = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
 	mtp_im_invoker_command = XInternAtom(dpy, "_MTP_IM_INVOKER_COMMAND", False);
@@ -349,6 +352,33 @@ int set_window_properties(Display *dpy, Window toplevel){
 			(unsigned char *)&net_wm_state_skip_taskbar, 1);
 	XChangeProperty (dpy, toplevel, net_wm_state, XA_ATOM, 32, PropModeAppend,
 			(unsigned char *)&net_wm_state_skip_pager, 1);
+
+	return 0;
+}
+
+int set_window_geometry(Display *dpy, Window win, char *geometry){
+	int xpos, ypos;
+	unsigned int width, height, return_mask;
+	XSizeHints	size_hints;
+
+	size_hints.flags = PMinSize | PMaxSize;
+	size_hints.min_width = size_hints.max_width = WIDTH;
+	size_hints.min_height = size_hints.max_height = HEIGHT;
+
+	XSetWMNormalHints(dpy, win, &size_hints);
+
+	if (geometry){
+
+		return_mask = XParseGeometry(geometry, &xpos, &ypos, &width, &height);
+
+		if (return_mask & (WidthValue | HeightValue)){
+			fprintf(stderr, "Can't resize windows\n");
+		}
+
+		if (return_mask & (XValue | YValue)){
+			XMoveWindow(dpy, win, xpos, ypos);
+		}
+	}
 
 	return 0;
 }
@@ -387,6 +417,8 @@ int main(int argc, char **argv)
 	int shape_ext_major, shape_ext_minor;
 
 	char *config_path = NULL;
+	char *config_geometry = NULL;
+	char *switch_geometry = NULL;
 	int loaded_config = 0;
 	int run = 1;
 	int options;
@@ -401,11 +433,14 @@ int main(int argc, char **argv)
 	Time last_pressed = 0L;
 
 
-	while ((options = getopt(argc, argv, "c:")) != -1)
+	while ((options = getopt(argc, argv, "c:g:")) != -1)
 	{
 		switch(options){
 			case 'c':
 				config_path = optarg;
+				break;
+			case 'g':
+				switch_geometry = optarg;
 				break;
 		}
 	}
@@ -433,14 +468,14 @@ int main(int argc, char **argv)
 
 #ifdef HAVE_LIBCONFIG
 	if (config_path) {
-		loaded_config = read_config(config_path);
+		loaded_config = read_config(config_path, &config_geometry);
 	} else {
 		char config_path[MAX_CONFIG_PATH];
 		char *home_dir = getenv("HOME");
 		strncpy(config_path, home_dir, MAX_CONFIG_PATH);
 		strncat(config_path + strlen(home_dir), CONFIG_FILE,
 				MAX_CONFIG_PATH - strlen(home_dir));
-		loaded_config = read_config(config_path);
+		loaded_config = read_config(config_path, &config_geometry);
 	}
 #endif
 
@@ -467,8 +502,18 @@ int main(int argc, char **argv)
 
 	XMapWindow(dpy, toplevel);
 
+	if (switch_geometry){
+		set_window_geometry(dpy, toplevel, switch_geometry);
+	} else {
+		set_window_geometry(dpy, toplevel, config_geometry);
+	}
+	if (config_geometry) {
+		free(config_geometry);
+	}
+
 	for( i = 0; i < MAX_IMAGES; i++) {
-		char_pixmaps[i] = XCreatePixmap(dpy, toplevel, WIDTH, HEIGHT, DefaultDepth(dpy, DefaultScreen(dpy)));
+		char_pixmaps[i] = XCreatePixmap(dpy, toplevel, WIDTH, HEIGHT,
+				DefaultDepth(dpy, DefaultScreen(dpy)));
 		status |= load_charset(dpy, gc, i);
 	}
 	if (status)
