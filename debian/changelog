@@ -1,3 +1,9 @@
+qwo (0.3-1~svn63) unstable; urgency=low
+
+  * Update to upstream SVN
+
+ -- Christian M. Amsüss <chrysn@fsfe.org>  Wed, 17 Dec 2008 23:42:35 +0100
+
 qwo (0.3-1) unstable; urgency=low
 
   * Initial pre-release
